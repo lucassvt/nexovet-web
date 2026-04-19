@@ -217,6 +217,9 @@ function categorizeLeaf(rubroRaw, subRubroRaw, itemName) {
   if (srNorm === 'ACCESORIOS PELUQUERIA CANINA' || srNorm === 'CUCHILLAS' || srNorm === 'TIJERAS' || srNorm === 'TURBINAS' || srNorm === 'PELADORAS' || srNorm === 'BS USO INSUMOS PELU' || srNorm === 'CURSO PELUQUERIA' || srNorm === 'SERVIVICOS PELUQUERIA') {
     return 'salud-peluqueria';
   }
+  if (srNorm.includes('SERVICIOS VETERINARIOS') || srNorm.includes('SERVICIOS A FRANQUICIAS') || rbCore.includes('SERVICIOS')) {
+    return 'salud-medicamentos'; // agrupamos servicios en Salud por defecto
+  }
 
   if (srNorm === 'AVES') return 'otros-aves';
   if (srNorm === 'PECES') return 'otros-peces';
@@ -388,17 +391,44 @@ async function main() {
       continue;
     }
 
-    // Buscar primer cod_item con match en DUX
+    // Buscar primer cod_item con match (y rubro/sub_rubro no nulos)
     let duxRow = null;
     for (const ci of codItems) {
-      if (duxByCodItem.has(ci)) { duxRow = duxByCodItem.get(ci); break; }
+      if (duxByCodItem.has(ci)) {
+        const row = duxByCodItem.get(ci);
+        if (row.rubro_nombre || row.sub_rubro_nombre) { duxRow = row; break; }
+        if (!duxRow) duxRow = row; // guardar como fallback
+      }
     }
     if (!duxRow) {
       noMatch.push({ id: p.id, title: p.title, cods: codItems });
       continue;
     }
+    // Fallback adicional: si el cod_item matcheado tiene rubro null,
+    // probar buscar por nombre del item (mismo item en otra sucursal)
+    if (!duxRow.rubro_nombre && !duxRow.sub_rubro_nombre) {
+      const titleUpper = (p.title || '').toUpperCase();
+      for (const [, candidate] of duxByCodItem) {
+        if (candidate.item && candidate.item.toUpperCase() === titleUpper && (candidate.rubro_nombre || candidate.sub_rubro_nombre)) {
+          duxRow = candidate;
+          break;
+        }
+      }
+    }
 
-    const leafHandle = categorizeLeaf(duxRow.rubro_nombre, duxRow.sub_rubro_nombre, duxRow.item || p.title);
+    let leafHandle = categorizeLeaf(duxRow.rubro_nombre, duxRow.sub_rubro_nombre, duxRow.item || p.title);
+    // Último recurso: clasificar por keywords del título
+    if (!leafHandle) {
+      const t = (p.title || '').toUpperCase();
+      if (/ARENA|PIEDRA SANITAR/.test(t)) leafHandle = 'gatos-piedras';
+      else if (/RASCADOR/.test(t)) leafHandle = 'gatos-rascadores';
+      else if (/ALIMENTO|BALANCEADO/.test(t) && itemIsGato(t)) leafHandle = 'gatos-alimento-seco';
+      else if (/ALIMENTO|BALANCEADO/.test(t)) leafHandle = 'perros-alimento-seco';
+      else if (/JUGUETE/.test(t)) leafHandle = itemIsGato(t) ? 'gatos-juguetes' : 'perros-juguetes';
+      else if (/CORREA|COLLAR|PRETAL|ARNES/.test(t)) leafHandle = 'perros-paseo';
+      else if (/SHAMPOO/.test(t)) leafHandle = 'salud-shampoo';
+      else leafHandle = 'varios-otros';
+    }
     if (!leafHandle) {
       noCategory.push({ id: p.id, title: p.title, rubro: duxRow.rubro_nombre, sub: duxRow.sub_rubro_nombre });
       continue;

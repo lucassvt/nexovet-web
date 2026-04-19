@@ -6,12 +6,19 @@ export default async function Footer() {
   const productCategories = await listCategories()
 
   return (
-    <footer className="w-full" style={{ background: "#0d1816", color: "#fff", borderTop: "6px solid #f6a906" }}>
+    <footer
+      className="w-full"
+      style={{ background: "#0d1816", color: "#fff", borderTop: "6px solid #f6a906" }}
+    >
       <div className="content-container flex flex-col w-full">
         <div className="flex flex-col gap-y-8 xsmall:flex-row items-start justify-between py-16">
           <div className="flex flex-col gap-y-4 max-w-sm">
-            <LocalizedClientLink href="/" className="text-3xl font-extrabold uppercase tracking-wide" style={{ color: "#f6a906" }}>
-              La Mascotera
+            <LocalizedClientLink href="/" className="inline-block">
+              <img
+                src="/images/brand/logo.png"
+                alt="La Mascotera"
+                style={{ height: "60px", width: "auto", filter: "brightness(0) invert(1)" }}
+              />
             </LocalizedClientLink>
             <p className="text-sm" style={{ color: "rgba(255,255,255,0.75)" }}>
               La cadena de pet shops más grande del NOA. +40 sucursales. Alimento, accesorios, veterinaria y peluquería canina.
@@ -33,7 +40,11 @@ export default async function Footer() {
                     if (c.parent_category) return null
                     return (
                       <li key={c.id}>
-                        <LocalizedClientLink className="text-sm hover:text-[#f6a906] transition" href={`/categories/${c.handle}`} style={{ color: "rgba(255,255,255,0.8)" }}>
+                        <LocalizedClientLink
+                          className="text-sm hover:text-[#f6a906] transition"
+                          href={`/categories/${c.handle}`}
+                          style={{ color: "rgba(255,255,255,0.8)" }}
+                        >
                           {c.name}
                         </LocalizedClientLink>
                       </li>
@@ -68,7 +79,10 @@ export default async function Footer() {
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row w-full mb-6 justify-between gap-3" style={{ borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: "24px", color: "rgba(255,255,255,0.55)" }}>
+        <div
+          className="flex flex-col sm:flex-row w-full mb-6 justify-between gap-3"
+          style={{ borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: "24px", color: "rgba(255,255,255,0.55)" }}
+        >
           <Text className="text-xs">© {new Date().getFullYear()} La Mascotera — Todos los derechos reservados</Text>
           <div className="flex items-center gap-4 text-xs">
             <span>Instagram</span>

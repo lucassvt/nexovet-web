@@ -11,45 +11,65 @@ export default async function Nav() {
 
   return (
     <div className="sticky top-0 inset-x-0 z-50 group">
-      {/* Top bar con promos */}
-      <div className="text-white text-xs py-1.5 text-center" style={{ background: "#f6a906", color: "#0d1816", fontWeight: 600 }}>
+      {/* Top bar */}
+      <div
+        className="text-xs py-1.5 text-center font-semibold"
+        style={{ background: "#f6a906", color: "#0d1816" }}
+      >
         🚚 Envíos a todo el país · Retiro en sucursal gratis · +40 sucursales del NOA
       </div>
-      <header className="relative h-16 mx-auto" style={{ background: "#0d1816", color: "#fff", borderBottom: "3px solid #f6a906" }}>
-        <nav className="content-container flex items-center justify-between w-full h-full text-small-regular">
+      <header
+        className="relative h-20 mx-auto"
+        style={{ background: "#fff", color: "#0d1816", borderBottom: "3px solid #f6a906" }}
+      >
+        <nav className="content-container flex items-center justify-between w-full h-full">
           <div className="flex-1 basis-0 h-full flex items-center">
             <div className="h-full">
               <SideMenu regions={regions} />
             </div>
           </div>
 
+          {/* Logo */}
           <div className="flex items-center h-full">
             <LocalizedClientLink
               href="/"
-              className="text-2xl font-extrabold uppercase tracking-wide transition-colors"
-              style={{ color: "#f6a906" }}
+              className="flex items-center gap-2 transition-transform hover:scale-105"
               data-testid="nav-store-link"
             >
-              La Mascotera
+              <img
+                src="/images/brand/logo.png"
+                alt="La Mascotera"
+                style={{ height: "52px", width: "auto" }}
+              />
             </LocalizedClientLink>
           </div>
 
           <div className="flex items-center gap-x-6 h-full flex-1 basis-0 justify-end">
-            <div className="hidden small:flex items-center gap-x-6 h-full">
-              <LocalizedClientLink className="hover:text-[#f6a906] text-white/90" href="/club">
+            <div className="hidden small:flex items-center gap-x-6 h-full text-sm font-semibold">
+              <LocalizedClientLink
+                className="hover:text-[#f6a906] transition-colors"
+                href="/club"
+              >
                 Club
               </LocalizedClientLink>
-              <LocalizedClientLink className="hover:text-[#f6a906] text-white/90" href="/sucursales">
+              <LocalizedClientLink
+                className="hover:text-[#f6a906] transition-colors"
+                href="/sucursales"
+              >
                 Sucursales
               </LocalizedClientLink>
-              <LocalizedClientLink className="hover:text-[#f6a906] text-white/90" href="/account" data-testid="nav-account-link">
+              <LocalizedClientLink
+                className="hover:text-[#f6a906] transition-colors"
+                href="/account"
+                data-testid="nav-account-link"
+              >
                 Mi cuenta
               </LocalizedClientLink>
             </div>
             <Suspense
               fallback={
                 <LocalizedClientLink
-                  className="hover:text-[#f6a906] flex gap-2 text-white/90"
+                  className="hover:text-[#f6a906] flex gap-2 text-sm font-semibold transition-colors"
                   href="/cart"
                   data-testid="nav-cart-link"
                 >
