@@ -1,0 +1,37 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: nexovet-shop-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: medusa
+      POSTGRES_PASSWORD: medusa_nexovet_2026
+      POSTGRES_DB: nexovet_shop
+    ports:
+      - '127.0.0.1:5435:5432'
+    volumes:
+      - nexovet-shop-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U medusa -d nexovet_shop']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: nexovet-shop-redis
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:6380:6379'
+    volumes:
+      - nexovet-shop-redisdata:/data
+    command: ['redis-server', '--appendonly', 'yes']
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  nexovet-shop-pgdata:
+  nexovet-shop-redisdata:

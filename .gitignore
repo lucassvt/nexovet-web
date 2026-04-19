@@ -1,0 +1,40 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# testing
+coverage/
+
+# next.js
+.next/
+out/
+build/
+dist/
+
+# medusa
+.medusa/
+.cache/
+uploads/
+
+# logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# env
+.env
+.env*.local
+.env.production
+!.env.template
+!.env.example
+
+# misc
+.DS_Store
+*.pem
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
