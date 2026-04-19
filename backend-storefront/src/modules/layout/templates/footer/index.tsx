@@ -1,155 +1,80 @@
 import { listCategories } from "@lib/data/categories"
-import { listCollections } from "@lib/data/collections"
-import { Text, clx } from "@medusajs/ui"
-
+import { Text } from "@medusajs/ui"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
-import MedusaCTA from "@modules/layout/components/medusa-cta"
 
 export default async function Footer() {
-  const { collections } = await listCollections({
-    fields: "*products",
-  })
   const productCategories = await listCategories()
 
   return (
-    <footer className="border-t border-ui-border-base w-full">
+    <footer className="w-full" style={{ background: "#0d1816", color: "#fff", borderTop: "6px solid #f6a906" }}>
       <div className="content-container flex flex-col w-full">
-        <div className="flex flex-col gap-y-6 xsmall:flex-row items-start justify-between py-40">
-          <div>
-            <LocalizedClientLink
-              href="/"
-              className="txt-compact-xlarge-plus text-ui-fg-subtle hover:text-ui-fg-base uppercase"
-            >
-              Medusa Store
+        <div className="flex flex-col gap-y-8 xsmall:flex-row items-start justify-between py-16">
+          <div className="flex flex-col gap-y-4 max-w-sm">
+            <LocalizedClientLink href="/" className="text-3xl font-extrabold uppercase tracking-wide" style={{ color: "#f6a906" }}>
+              La Mascotera
             </LocalizedClientLink>
+            <p className="text-sm" style={{ color: "rgba(255,255,255,0.75)" }}>
+              La cadena de pet shops más grande del NOA. +40 sucursales. Alimento, accesorios, veterinaria y peluquería canina.
+            </p>
+            <div className="flex flex-col gap-1 text-sm mt-2" style={{ color: "rgba(255,255,255,0.7)" }}>
+              <span>📱 WhatsApp: +54 381 239 1001</span>
+              <span>✉️ soportelamascotera@gmail.com</span>
+            </div>
           </div>
-          <div className="text-small-regular gap-10 md:gap-x-16 grid grid-cols-2 sm:grid-cols-3">
-            {productCategories && productCategories?.length > 0 && (
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-8 md:gap-12">
+            {productCategories && productCategories.length > 0 && (
               <div className="flex flex-col gap-y-2">
-                <span className="txt-small-plus txt-ui-fg-base">
-                  Categories
+                <span className="font-semibold uppercase text-sm tracking-wider" style={{ color: "#f6a906" }}>
+                  Categorías
                 </span>
-                <ul
-                  className="grid grid-cols-1 gap-2"
-                  data-testid="footer-categories"
-                >
-                  {productCategories?.slice(0, 6).map((c) => {
-                    if (c.parent_category) {
-                      return
-                    }
-
-                    const children =
-                      c.category_children?.map((child) => ({
-                        name: child.name,
-                        handle: child.handle,
-                        id: child.id,
-                      })) || null
-
+                <ul className="grid grid-cols-1 gap-2 mt-2" data-testid="footer-categories">
+                  {productCategories.slice(0, 8).map((c) => {
+                    if (c.parent_category) return null
                     return (
-                      <li
-                        className="flex flex-col gap-2 text-ui-fg-subtle txt-small"
-                        key={c.id}
-                      >
-                        <LocalizedClientLink
-                          className={clx(
-                            "hover:text-ui-fg-base",
-                            children && "txt-small-plus"
-                          )}
-                          href={`/categories/${c.handle}`}
-                          data-testid="category-link"
-                        >
+                      <li key={c.id}>
+                        <LocalizedClientLink className="text-sm hover:text-[#f6a906] transition" href={`/categories/${c.handle}`} style={{ color: "rgba(255,255,255,0.8)" }}>
                           {c.name}
                         </LocalizedClientLink>
-                        {children && (
-                          <ul className="grid grid-cols-1 ml-3 gap-2">
-                            {children &&
-                              children.map((child) => (
-                                <li key={child.id}>
-                                  <LocalizedClientLink
-                                    className="hover:text-ui-fg-base"
-                                    href={`/categories/${child.handle}`}
-                                    data-testid="category-link"
-                                  >
-                                    {child.name}
-                                  </LocalizedClientLink>
-                                </li>
-                              ))}
-                          </ul>
-                        )}
                       </li>
                     )
                   })}
                 </ul>
               </div>
             )}
-            {collections && collections.length > 0 && (
-              <div className="flex flex-col gap-y-2">
-                <span className="txt-small-plus txt-ui-fg-base">
-                  Collections
-                </span>
-                <ul
-                  className={clx(
-                    "grid grid-cols-1 gap-2 text-ui-fg-subtle txt-small",
-                    {
-                      "grid-cols-2": (collections?.length || 0) > 3,
-                    }
-                  )}
-                >
-                  {collections?.slice(0, 6).map((c) => (
-                    <li key={c.id}>
-                      <LocalizedClientLink
-                        className="hover:text-ui-fg-base"
-                        href={`/collections/${c.handle}`}
-                      >
-                        {c.title}
-                      </LocalizedClientLink>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
             <div className="flex flex-col gap-y-2">
-              <span className="txt-small-plus txt-ui-fg-base">Medusa</span>
-              <ul className="grid grid-cols-1 gap-y-2 text-ui-fg-subtle txt-small">
-                <li>
-                  <a
-                    href="https://github.com/medusajs"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="hover:text-ui-fg-base"
-                  >
-                    GitHub
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="https://docs.medusajs.com"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="hover:text-ui-fg-base"
-                  >
-                    Documentation
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="https://github.com/medusajs/nextjs-starter-medusa"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="hover:text-ui-fg-base"
-                  >
-                    Source code
-                  </a>
-                </li>
+              <span className="font-semibold uppercase text-sm tracking-wider" style={{ color: "#f6a906" }}>La Mascotera</span>
+              <ul className="grid grid-cols-1 gap-2 mt-2 text-sm" style={{ color: "rgba(255,255,255,0.8)" }}>
+                <li><LocalizedClientLink className="hover:text-[#f6a906]" href="/nosotros">Quiénes somos</LocalizedClientLink></li>
+                <li><LocalizedClientLink className="hover:text-[#f6a906]" href="/sucursales">Sucursales</LocalizedClientLink></li>
+                <li><LocalizedClientLink className="hover:text-[#f6a906]" href="/trabajo">Trabajá con nosotros</LocalizedClientLink></li>
+                <li><LocalizedClientLink className="hover:text-[#f6a906]" href="/franquicias">Franquicias</LocalizedClientLink></li>
+                <li><LocalizedClientLink className="hover:text-[#f6a906]" href="/como-comprar">Cómo comprar</LocalizedClientLink></li>
+              </ul>
+            </div>
+            <div className="flex flex-col gap-y-2">
+              <span className="font-semibold uppercase text-sm tracking-wider" style={{ color: "#f6a906" }}>Ayuda</span>
+              <ul className="grid grid-cols-1 gap-2 mt-2 text-sm" style={{ color: "rgba(255,255,255,0.8)" }}>
+                <li><LocalizedClientLink className="hover:text-[#f6a906]" href="/account">Mi cuenta</LocalizedClientLink></li>
+                <li><LocalizedClientLink className="hover:text-[#f6a906]" href="/club">Club La Mascotera</LocalizedClientLink></li>
+                <li><LocalizedClientLink className="hover:text-[#f6a906]" href="/televeterinaria">Televeterinaria</LocalizedClientLink></li>
+                <li><LocalizedClientLink className="hover:text-[#f6a906]" href="/peluqueria">Peluquería canina</LocalizedClientLink></li>
+                <li><LocalizedClientLink className="hover:text-[#f6a906]" href="/faq">Preguntas frecuentes</LocalizedClientLink></li>
+                <li><LocalizedClientLink className="hover:text-[#f6a906]" href="/devoluciones">Devoluciones</LocalizedClientLink></li>
+                <li><LocalizedClientLink className="hover:text-[#f6a906]" href="/terminos">Términos y condiciones</LocalizedClientLink></li>
+                <li><LocalizedClientLink className="hover:text-[#f6a906]" href="/arrepentimiento">Botón de arrepentimiento</LocalizedClientLink></li>
               </ul>
             </div>
           </div>
         </div>
-        <div className="flex w-full mb-16 justify-between text-ui-fg-muted">
-          <Text className="txt-compact-small">
-            © {new Date().getFullYear()} Medusa Store. All rights reserved.
-          </Text>
-          <MedusaCTA />
+
+        <div className="flex flex-col sm:flex-row w-full mb-6 justify-between gap-3" style={{ borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: "24px", color: "rgba(255,255,255,0.55)" }}>
+          <Text className="text-xs">© {new Date().getFullYear()} La Mascotera — Todos los derechos reservados</Text>
+          <div className="flex items-center gap-4 text-xs">
+            <span>Instagram</span>
+            <span>Facebook</span>
+            <span>TikTok</span>
+          </div>
         </div>
       </div>
     </footer>
