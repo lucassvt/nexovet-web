@@ -60,6 +60,7 @@ const minVariantPrice = (p: HttpTypes.StoreProduct): number | null => {
   const prices = p.variants
     .map((v) => v?.calculated_price?.calculated_amount)
     .filter((n): n is number => typeof n === "number" && n > 0)
+    .map((n) => n / 100)
   if (!prices.length) return null
   return Math.min(...prices)
 }
@@ -77,11 +78,11 @@ export async function buildFacets({
   collectionId,
 }: {
   countryCode: string
-  categoryId?: string
+  categoryId?: string | string[]
   collectionId?: string
 }): Promise<FacetResult> {
   const queryParams: Record<string, any> = { limit: 100 }
-  if (categoryId) queryParams.category_id = [categoryId]
+  if (categoryId) queryParams.category_id = Array.isArray(categoryId) ? categoryId : [categoryId]
   if (collectionId) queryParams.collection_id = [collectionId]
 
   try {

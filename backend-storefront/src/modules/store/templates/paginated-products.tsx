@@ -52,6 +52,7 @@ const minVariantPrice = (p: HttpTypes.StoreProduct): number | null => {
   const prices = p.variants
     .map((v) => v?.calculated_price?.calculated_amount)
     .filter((n): n is number => typeof n === "number" && n > 0)
+    .map((n) => n / 100)
   if (!prices.length) return null
   return Math.min(...prices)
 }
@@ -112,7 +113,7 @@ export default async function PaginatedProducts({
   sortBy?: SortOptions
   page: number
   collectionId?: string
-  categoryId?: string
+  categoryId?: string | string[]
   productsIds?: string[]
   countryCode: string
   filters?: PaginatedFilters
@@ -123,7 +124,7 @@ export default async function PaginatedProducts({
 
   const queryParams: Record<string, any> = { limit: 100 }
   if (collectionId) queryParams.collection_id = [collectionId]
-  if (categoryId) queryParams.category_id = [categoryId]
+  if (categoryId) queryParams.category_id = Array.isArray(categoryId) ? categoryId : [categoryId]
   if (productsIds) queryParams.id = productsIds
   if (filters.q) queryParams.q = filters.q
 

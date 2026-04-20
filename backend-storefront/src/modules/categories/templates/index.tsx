@@ -58,6 +58,21 @@ export default async function CategoryTemplate({
     buildFacets({ countryCode, categoryId: category.id }),
   ])
 
+  const childrenByParent = new Map<string, any[]>()
+  for (const c of allCategories || []) {
+    const pid = c?.parent_category?.id || (c as any)?.parent_category_id
+    if (!pid) continue
+    if (!childrenByParent.has(pid)) childrenByParent.set(pid, [])
+    childrenByParent.get(pid)!.push(c)
+  }
+  const collectDescendantIds = (cat: any): string[] => {
+    const ids: string[] = [cat.id]
+    const kids = childrenByParent.get(cat.id) || []
+    for (const child of kids) ids.push(...collectDescendantIds(child))
+    return ids
+  }
+  const categoryIds = collectDescendantIds(category)
+
   const filters: PaginatedFilters = {
     q: q || undefined,
     brands: brands ? brands.split(",").filter(Boolean) : undefined,
@@ -126,7 +141,7 @@ export default async function CategoryTemplate({
           <PaginatedProducts
             sortBy={sort}
             page={pageNumber}
-            categoryId={category.id}
+            categoryId={categoryIds}
             countryCode={countryCode}
             filters={filters}
           />

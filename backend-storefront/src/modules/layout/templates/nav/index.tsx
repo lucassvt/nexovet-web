@@ -114,19 +114,19 @@ export default async function Nav() {
               <span>🐱</span> <span>Gatos</span>
             </LocalizedClientLink>
             <LocalizedClientLink
-              href="/categories/aves"
+              href="/categories/otros-aves"
               className="flex items-center gap-1.5 hover:text-[#f6a906] transition-colors"
             >
               <span>🦜</span> <span>Aves</span>
             </LocalizedClientLink>
             <LocalizedClientLink
-              href="/categories/roedores"
+              href="/categories/otros-roedores"
               className="flex items-center gap-1.5 hover:text-[#f6a906] transition-colors"
             >
               <span>🐹</span> <span>Roedores</span>
             </LocalizedClientLink>
             <LocalizedClientLink
-              href="/categories/peces"
+              href="/categories/otros-peces"
               className="flex items-center gap-1.5 hover:text-[#f6a906] transition-colors"
             >
               <span>🐟</span> <span>Peces</span>
