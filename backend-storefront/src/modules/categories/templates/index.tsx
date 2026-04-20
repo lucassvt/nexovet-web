@@ -13,6 +13,7 @@ import { SortOptions } from "@modules/store/components/refinement-list/sort-prod
 import PaginatedProducts, {
   PaginatedFilters,
 } from "@modules/store/templates/paginated-products"
+import Breadcrumbs from "@modules/common/components/breadcrumbs"
 
 type CategoryTemplateProps = {
   category: HttpTypes.StoreProductCategory
@@ -82,7 +83,17 @@ export default async function CategoryTemplate({
     inStockOnly: stock === "1",
   }
 
+  const crumbs: Array<{ label: string; href?: string }> = []
+  crumbs.push({ label: "Tienda", href: "/store" })
+  const reversedParents = [...parents].reverse()
+  for (const par of reversedParents) {
+    crumbs.push({ label: par.name, href: "/categories/" + par.handle })
+  }
+  crumbs.push({ label: category.name })
+
   return (
+    <>
+    <Breadcrumbs items={crumbs} />
     <div
       className="flex flex-col small:flex-row small:items-start py-6 content-container font-montserrat"
       data-testid="category-container"
@@ -148,5 +159,6 @@ export default async function CategoryTemplate({
         </Suspense>
       </div>
     </div>
+    </>
   )
 }

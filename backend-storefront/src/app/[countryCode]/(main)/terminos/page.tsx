@@ -48,8 +48,14 @@ export default function Terminos() {
           </div>
 
           <div>
-            <h2 className="text-2xl font-bold mb-3" style={{ color: "#0d1816" }}>7. Televeterinaria</h2>
-            <p>Las consultas de televeterinaria son orientativas y no reemplazan la consulta presencial en casos de urgencia. No aplicamos tratamientos sin derivación a un veterinario clínico presencial cuando corresponda.</p>
+            <h2 className="text-2xl font-bold mb-3" style={{ color: "#0d1816" }}>7. Televeterinaria (veterinaria online)</h2>
+            <p className="mb-3">La consulta veterinaria online tiene una duración máxima de 20 minutos y se realiza mediante videollamada. El servicio comprende evaluación inicial, orientación, asesoramiento general, recomendaciones preventivas y educativas, y diagnósticos presuntivos en base a lo reportado por el Usuario.</p>
+            <p className="mb-3"><strong>Este servicio NO reemplaza una consulta presencial veterinaria</strong> ni está diseñado para situaciones de emergencia o urgencia. Quedan expresamente excluidos: casos de emergencia o críticos, animales grandes, especies exóticas (aves, reptiles, roedores, peces), emisión de certificados médicos, procedimientos invasivos y diagnósticos definitivos sin evaluación clínica presencial.</p>
+            <p className="mb-3">Los resultados de la consulta y las recomendaciones médicas se almacenan en la ficha clínica digital del paciente dentro del Club La Mascotera, accesibles para consultas futuras.</p>
+            <p className="mb-3"><strong>Crédito por consulta presencial:</strong> El valor abonado por una consulta online puede ser acreditado a una consulta presencial en sucursal, siempre que se realice dentro de los 7 días corridos y se refiera a la misma condición clínica.</p>
+            <p className="mb-3"><strong>Cancelaciones:</strong> Se requiere preaviso de al menos 12 horas. Cancelaciones fuera de este plazo o inasistencia implican la pérdida total del pago.</p>
+            <p className="mb-3"><strong>Requisitos:</strong> el servicio está restringido a usuarios mayores de 18 años. Se recomienda registro previo en el Club La Mascotera.</p>
+            <p>La Mascotera no se responsabiliza por fallas de conectividad, problemas del dispositivo del Usuario u otras circunstancias ajenas a su control que afecten la videollamada.</p>
           </div>
 
           <div>
