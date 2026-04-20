@@ -1,6 +1,7 @@
 // Destino: src/app/[countryCode]/(main)/club/page.tsx
 import { Metadata } from "next"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import PointsCalculator from "@modules/club/components/points-calculator"
 
 export const metadata: Metadata = {
   title: "Club La Mascotera — Puntos, descuentos y beneficios",
@@ -129,6 +130,12 @@ export default function Club() {
         </div>
       </section>
 
+      {/* CALCULADORA */}
+      <section className="content-container py-16">
+        <div className="max-w-4xl mx-auto">
+          <PointsCalculator />
+        </div>
+      </section>
       {/* BENEFICIOS EXTRA */}
       <section className="content-container py-16">
         <h2
@@ -174,6 +181,65 @@ export default function Club() {
         </div>
       </section>
 
+      {/* FAQ CLUB */}
+      <section style={{ background: "#fff" }}>
+        <div className="content-container py-16 max-w-3xl">
+          <h2
+            className="text-3xl md:text-4xl font-black uppercase text-center mb-10"
+            style={{ color: "#0d1816" }}
+          >
+            Preguntas <span style={{ color: "#f6a906" }}>frecuentes</span>
+          </h2>
+          <div className="space-y-3">
+            {[
+              {
+                q: "¿Es realmente gratis?",
+                a: "Sí. El Club La Mascotera es 100% gratuito. No hay cuota mensual ni anual. Solo necesitás tu DNI y un email.",
+              },
+              {
+                q: "¿Qué pasa si pierdo mi tarjeta del Club?",
+                a: "No hay tarjeta física. Tu DNI es tu identificador. En sucursal te piden el DNI, y online ingresás con email + contraseña.",
+              },
+              {
+                q: "¿Los puntos se comparten entre sucursales?",
+                a: "Sí. Un mismo DNI acumula puntos de cualquier sucursal propia o franquicia, de las compras online (Tiendanube NOA, Tiendanube Neuquén y este ecommerce) y de las consultas de televeterinaria.",
+              },
+              {
+                q: "¿Cuánto dura mi tier?",
+                a: "El tier se calcula sobre las compras de los últimos 12 meses (ventana móvil). Si bajás el nivel de gasto, tu tier baja al recalcularse cada mes.",
+              },
+              {
+                q: "¿Puedo canjear puntos por plata?",
+                a: "No. Los puntos se canjean por productos del catálogo, descuentos en tu próxima compra, consultas veterinarias o servicios de peluquería. No tienen valor monetario legal.",
+              },
+              {
+                q: "¿Los puntos vencen?",
+                a: "Sí, a los 365 días desde que fueron acreditados. Te avisamos 30, 15 y 1 días antes del vencimiento por email para que puedas usarlos.",
+              },
+              {
+                q: "¿Puedo transferir puntos a otra persona?",
+                a: "No por ahora. Los puntos están asociados a tu DNI y no son transferibles.",
+              },
+            ].map((f) => (
+              <details
+                key={f.q}
+                className="p-5 bg-[#fafafa] rounded-xl border border-gray-200 hover:border-[#f6a906] transition-colors cursor-pointer"
+              >
+                <summary
+                  className="font-bold flex justify-between items-center"
+                  style={{ color: "#0d1816" }}
+                >
+                  {f.q}
+                  <span className="text-xl" style={{ color: "#f6a906" }}>
+                    +
+                  </span>
+                </summary>
+                <p className="mt-3 text-sm text-gray-700 leading-relaxed">{f.a}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
       {/* CTA FINAL */}
       <section style={{ background: "#0d1816", color: "#fff" }}>
         <div className="content-container py-16 text-center">

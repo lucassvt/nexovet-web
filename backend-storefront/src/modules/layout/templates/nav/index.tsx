@@ -6,6 +6,7 @@ import LocalizedClientLink from "@modules/common/components/localized-client-lin
 import CartButton from "@modules/layout/components/cart-button"
 import SideMenu from "@modules/layout/components/side-menu"
 import RegionPill from "@modules/region-selector/components/region-pill"
+import SpeciesMegaMenu from "@modules/layout/components/species-mega-menu"
 
 export default async function Nav() {
   const regions = await listRegions().then((regions: StoreRegion[]) => regions)
@@ -94,74 +95,7 @@ export default async function Nav() {
         </nav>
       </header>
 
-      {/* Sub-bar con categorías por especie + búsqueda */}
-      <div
-        className="hidden small:block"
-        style={{ background: "#fafafa", borderBottom: "3px solid #f6a906" }}
-      >
-        <div className="content-container flex items-center justify-between py-2">
-          <div className="flex items-center gap-6 text-sm font-semibold" style={{ color: "#0d1816" }}>
-            <LocalizedClientLink
-              href="/categories/perros"
-              className="flex items-center gap-1.5 hover:text-[#f6a906] transition-colors"
-            >
-              <span>🐶</span> <span>Perros</span>
-            </LocalizedClientLink>
-            <LocalizedClientLink
-              href="/categories/gatos"
-              className="flex items-center gap-1.5 hover:text-[#f6a906] transition-colors"
-            >
-              <span>🐱</span> <span>Gatos</span>
-            </LocalizedClientLink>
-            <LocalizedClientLink
-              href="/categories/otros-aves"
-              className="flex items-center gap-1.5 hover:text-[#f6a906] transition-colors"
-            >
-              <span>🦜</span> <span>Aves</span>
-            </LocalizedClientLink>
-            <LocalizedClientLink
-              href="/categories/otros-roedores"
-              className="flex items-center gap-1.5 hover:text-[#f6a906] transition-colors"
-            >
-              <span>🐹</span> <span>Roedores</span>
-            </LocalizedClientLink>
-            <LocalizedClientLink
-              href="/categories/otros-peces"
-              className="flex items-center gap-1.5 hover:text-[#f6a906] transition-colors"
-            >
-              <span>🐟</span> <span>Peces</span>
-            </LocalizedClientLink>
-            <LocalizedClientLink
-              href="/televeterinaria"
-              className="flex items-center gap-1.5 hover:text-[#f6a906] transition-colors"
-            >
-              <span>🩺</span> <span>Televeterinaria</span>
-            </LocalizedClientLink>
-            <LocalizedClientLink
-              href="/peluqueria"
-              className="flex items-center gap-1.5 hover:text-[#f6a906] transition-colors"
-            >
-              <span>✂️</span> <span>Peluquería</span>
-            </LocalizedClientLink>
-          </div>
-          {/* Search inline */}
-          <form action="/ar/store" method="GET" className="flex items-center gap-1">
-            <input
-              type="search"
-              name="q"
-              placeholder="Buscar productos, marcas..."
-              className="text-sm px-3 py-1.5 rounded border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#f6a906] focus:border-[#f6a906] w-64"
-            />
-            <button
-              type="submit"
-              className="text-sm px-3 py-1.5 rounded font-semibold transition-colors"
-              style={{ background: "#f6a906", color: "#0d1816" }}
-            >
-              🔍
-            </button>
-          </form>
-        </div>
-      </div>
+      <SpeciesMegaMenu />
     </div>
   )
 }
