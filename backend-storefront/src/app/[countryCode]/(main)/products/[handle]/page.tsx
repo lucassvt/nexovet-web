@@ -114,6 +114,7 @@ export default async function ProductPage(props: Props) {
     queryParams: { handle: params.handle },
   }).then(({ response }) => response.products[0])
 
+  if (!pricedProduct) { notFound() }
   const images = getImagesForVariant(pricedProduct, selectedVariantId)
 
   if (!pricedProduct) {
