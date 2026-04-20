@@ -71,6 +71,7 @@ export default async function Footer() {
                 <li><LocalizedClientLink className="hover:text-[#f6a906]" href="/televeterinaria">Televeterinaria</LocalizedClientLink></li>
                 <li><LocalizedClientLink className="hover:text-[#f6a906]" href="/peluqueria">Peluquería canina</LocalizedClientLink></li>
                 <li><LocalizedClientLink className="hover:text-[#f6a906]" href="/faq">Preguntas frecuentes</LocalizedClientLink></li>
+                <li><LocalizedClientLink className="hover:text-[#f6a906]" href="/blog">Blog & consejos</LocalizedClientLink></li>
                 <li><LocalizedClientLink className="hover:text-[#f6a906]" href="/devoluciones">Devoluciones</LocalizedClientLink></li>
                 <li><LocalizedClientLink className="hover:text-[#f6a906]" href="/terminos">Términos y condiciones</LocalizedClientLink></li>
                 <li><LocalizedClientLink className="hover:text-[#f6a906]" href="/arrepentimiento">Botón de arrepentimiento</LocalizedClientLink></li>

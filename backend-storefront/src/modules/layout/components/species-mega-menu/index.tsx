@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import SearchAutosuggest from "@modules/layout/components/search-autosuggest"
 
 type Col = { title: string; href: string; items: Array<{ label: string; href: string }> }
 type SpeciesKey = "perros" | "gatos" | "otros"
@@ -158,21 +159,9 @@ export default function SpeciesMegaMenu() {
             </LocalizedClientLink>
           ))}
         </div>
-        <form action="/ar/store" method="GET" className="flex items-center gap-1" onMouseEnter={() => setActive(null)}>
-          <input
-            type="search"
-            name="q"
-            placeholder="Buscar productos, marcas..."
-            className="text-sm px-3 py-1.5 rounded border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#f6a906] focus:border-[#f6a906] w-64"
-          />
-          <button
-            type="submit"
-            className="text-sm px-3 py-1.5 rounded font-semibold transition-colors"
-            style={{ background: "#f6a906", color: "#0d1816" }}
-          >
-            🔍
-          </button>
-        </form>
+        <div onMouseEnter={() => setActive(null)}>
+          <SearchAutosuggest />
+        </div>
       </div>
 
       {/* Mega-menu panel */}

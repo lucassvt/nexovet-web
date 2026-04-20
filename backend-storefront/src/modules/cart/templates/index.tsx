@@ -1,4 +1,5 @@
 import ItemsTemplate from "./items"
+import FreeShippingProgress from "../components/free-shipping-progress"
 import Summary from "./summary"
 import EmptyCartMessage from "../components/empty-cart-message"
 import SignInPrompt from "../components/sign-in-prompt"
@@ -24,6 +25,7 @@ const CartTemplate = ({
                   <Divider />
                 </>
               )}
+              <FreeShippingProgress cart={cart} />
               <ItemsTemplate cart={cart} />
             </div>
             <div className="relative">

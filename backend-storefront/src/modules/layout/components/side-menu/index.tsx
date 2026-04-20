@@ -36,6 +36,7 @@ const SERVICES: Array<{ name: string; href: string; emoji: string }> = [
 
 const HELP_LINKS: Array<{ name: string; href: string }> = [
   { name: "Preguntas frecuentes", href: "/faq" },
+  { name: "Blog & consejos", href: "/blog" },
   { name: "Devoluciones", href: "/devoluciones" },
   { name: "Botón de arrepentimiento", href: "/arrepentimiento" },
   { name: "Términos y condiciones", href: "/terminos" },

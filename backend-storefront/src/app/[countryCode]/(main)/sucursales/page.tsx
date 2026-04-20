@@ -1,5 +1,6 @@
 import { Metadata } from "next"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import SucursalesMap from "@modules/sucursales/components/map"
 
 export const metadata: Metadata = {
   title: "Sucursales — La Mascotera",
@@ -78,7 +79,11 @@ export default function Sucursales() {
         </div>
       </section>
 
-      <section className="content-container py-16">
+      <section className="content-container py-10">
+        <SucursalesMap />
+      </section>
+
+      <section className="content-container pb-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {SUCURSALES.map((region) => (
             <div key={region.region} className="bg-white rounded-xl p-6 border border-gray-200 hover:border-[#f6a906] transition-colors">

@@ -1,0 +1,38 @@
+{
+  "name": "La Mascotera",
+  "short_name": "La Mascotera",
+  "description": "Pet shop online del NOA. Alimentos, accesorios, veterinaria y peluquería para tu mascota.",
+  "start_url": "/ar",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fafafa",
+  "theme_color": "#f6a906",
+  "lang": "es-AR",
+  "dir": "ltr",
+  "categories": ["shopping", "pets"],
+  "icons": [
+    { "src": "/images/brand/logo.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/images/brand/logo.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/images/brand/isotipo.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Tienda",
+      "short_name": "Tienda",
+      "url": "/ar/store",
+      "icons": [{ "src": "/images/brand/patita.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Club",
+      "short_name": "Club",
+      "url": "/ar/club",
+      "icons": [{ "src": "/images/brand/corazon.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Televeterinaria",
+      "short_name": "Televet",
+      "url": "/ar/televeterinaria",
+      "icons": [{ "src": "/images/brand/veterinaria.png", "sizes": "96x96" }]
+    }
+  ]
+}
