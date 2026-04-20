@@ -6,6 +6,7 @@ import CartTotals from "@modules/common/components/cart-totals"
 import Divider from "@modules/common/components/divider"
 import DiscountCode from "@modules/checkout/components/discount-code"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import MPCheckoutButton from "@modules/checkout/components/mp-checkout-button"
 import { HttpTypes } from "@medusajs/types"
 
 type SummaryProps = {
@@ -35,11 +36,26 @@ const Summary = ({ cart }: SummaryProps) => {
       <DiscountCode cart={cart} />
       <Divider />
       <CartTotals totals={cart} />
+
+      {/* Pago directo con Mercado Pago (más rápido) */}
+      <div className="mt-2">
+        <MPCheckoutButton cart={cart} data-testid="cart-mp-checkout" />
+      </div>
+
+      <div className="relative flex items-center my-2">
+        <div className="flex-grow border-t border-gray-200" />
+        <span className="px-3 text-xs text-gray-400 uppercase">o</span>
+        <div className="flex-grow border-t border-gray-200" />
+      </div>
+
+      {/* Checkout tradicional Medusa (address + shipping + payment) */}
       <LocalizedClientLink
         href={"/checkout?step=" + step}
         data-testid="checkout-button"
       >
-        <Button className="w-full h-10">Finalizar compra</Button>
+        <Button variant="secondary" className="w-full h-10">
+          Checkout completo (ingresar datos)
+        </Button>
       </LocalizedClientLink>
     </div>
   )
