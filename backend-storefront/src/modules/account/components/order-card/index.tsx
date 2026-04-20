@@ -5,12 +5,14 @@ import Thumbnail from "@modules/products/components/thumbnail"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
+import { reorder } from "@lib/data/reorder-action"
 
 type OrderCardProps = {
   order: HttpTypes.StoreOrder
+  countryCode?: string
 }
 
-const OrderCard = ({ order }: OrderCardProps) => {
+const OrderCard = ({ order, countryCode = "ar" }: OrderCardProps) => {
   const numberOfLines = useMemo(() => {
     return (
       order.items?.reduce((acc, item) => {
@@ -73,7 +75,20 @@ const OrderCard = ({ order }: OrderCardProps) => {
           </div>
         )}
       </div>
-      <div className="flex justify-end">
+      <div className="flex flex-wrap justify-end gap-2">
+        {/* Volver a pedir (Puppis pattern) */}
+        <form action={reorder}>
+          <input type="hidden" name="orderId" value={order.id} />
+          <input type="hidden" name="countryCode" value={countryCode} />
+          <Button
+            type="submit"
+            data-testid="order-reorder-button"
+            variant="secondary"
+            style={{ background: "#f6a906", color: "#0d1816", borderColor: "#f6a906" }}
+          >
+            🔄 Volver a pedir
+          </Button>
+        </form>
         <LocalizedClientLink href={`/account/orders/details/${order.id}`}>
           <Button data-testid="order-details-link" variant="secondary">
             Ver detalles
