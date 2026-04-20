@@ -9,6 +9,7 @@ import Footer from "@modules/layout/templates/footer"
 import Nav from "@modules/layout/templates/nav"
 import RegionSelectorModal from "@modules/region-selector/components/region-selector-modal"
 import FreeShippingPriceNudge from "@modules/shipping/components/free-shipping-price-nudge"
+import WhatsAppFab from "@modules/layout/components/whatsapp-fab"
 
 export const metadata: Metadata = {
   metadataBase: new URL(getBaseURL()),
@@ -41,6 +42,7 @@ export default async function PageLayout(props: { children: React.ReactNode }) {
       )}
       {props.children}
       <Footer />
+      <WhatsAppFab />
       <RegionSelectorModal />
     </>
   )

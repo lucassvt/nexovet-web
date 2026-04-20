@@ -4,6 +4,7 @@ import { sdk } from "@lib/config"
 import { getRegion } from "@lib/data/regions"
 import { HttpTypes } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import ProductCardMascotera from "@modules/products/components/product-card-mascotera"
 
 export const metadata: Metadata = {
   title: "La Mascotera — Pet shop online del NOA",
@@ -172,35 +173,9 @@ export default async function Home({ params }: { params: Promise<{ countryCode: 
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              {products.slice(0, 8).map((product) => {
-                const variant = product.variants?.[0]
-                const price = variant?.calculated_price?.calculated_amount
-                const curr = variant?.calculated_price?.currency_code?.toUpperCase() || "ARS"
-                return (
-                  <LocalizedClientLink
-                    key={product.id}
-                    href={`/products/${product.handle}`}
-                    className="group bg-white rounded-xl overflow-hidden border border-gray-200 hover:shadow-xl hover:border-transparent transition-all"
-                  >
-                    <div className="aspect-square bg-gray-100 flex items-center justify-center overflow-hidden">
-                      {product.thumbnail ? (
-                        <img src={product.thumbnail} alt={product.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                      ) : (
-                        <span className="text-5xl opacity-20">🐾</span>
-                      )}
-                    </div>
-                    <div className="p-4">
-                      <h3 className="text-sm font-semibold line-clamp-2 mb-2" style={{ color: "#0d1816" }}>{product.title}</h3>
-                      {price != null && (
-                        <div className="flex items-baseline gap-1">
-                          <span className="text-xl font-black" style={{ color: "#0d1816" }}>${(price).toLocaleString("es-AR")}</span>
-                          <span className="text-xs text-gray-500">{curr}</span>
-                        </div>
-                      )}
-                    </div>
-                  </LocalizedClientLink>
-                )
-              })}
+              {products.slice(0, 8).map((product) => (
+                <ProductCardMascotera key={product.id} product={product} />
+              ))}
             </div>
           )}
         </div>

@@ -79,6 +79,20 @@ export default async function Footer() {
           </div>
         </div>
 
+        <div className="py-6 flex flex-wrap items-center justify-between gap-4" style={{ borderTop: "1px solid rgba(255,255,255,0.1)" }}>
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="text-xs uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.5)" }}>Pagá con</span>
+            <span className="inline-block px-3 py-1 bg-white rounded text-[#009ee3] font-bold text-xs">Mercado Pago</span>
+            <span className="inline-block px-3 py-1 bg-white rounded text-blue-900 font-bold text-xs">VISA</span>
+            <span className="inline-block px-3 py-1 bg-white rounded text-red-600 font-bold text-xs">Mastercard</span>
+            <span className="inline-block px-3 py-1 bg-white rounded text-green-700 font-bold text-xs">Cabal</span>
+            <span className="inline-block px-3 py-1 bg-white rounded text-gray-800 font-bold text-xs">Transferencia</span>
+            <span className="inline-block px-3 py-1 bg-white rounded text-orange-500 font-bold text-xs">Naranja</span>
+          </div>
+          <a href="https://consumidor.produccion.gob.ar/" target="_blank" rel="noopener noreferrer" className="text-xs hover:text-[#f6a906]" style={{ color: "rgba(255,255,255,0.65)" }}>
+            Defensa del Consumidor →
+          </a>
+        </div>
         <div
           className="flex flex-col sm:flex-row w-full mb-6 justify-between gap-3"
           style={{ borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: "24px", color: "rgba(255,255,255,0.55)" }}

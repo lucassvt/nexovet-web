@@ -4,6 +4,8 @@ import { sdk } from "@lib/config"
 import { getRegion } from "@lib/data/regions"
 import { HttpTypes } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import ProductCardMascotera from "@modules/products/components/product-card-mascotera"
+import Breadcrumbs from "@modules/common/components/breadcrumbs"
 
 // Config de las 8 regiones del ecommerce propio
 const REGIONS_CONFIG: Record<string, {
@@ -122,6 +124,7 @@ export default async function TiendaRegion({
 
   return (
     <div style={{ background: "#fafafa" }}>
+      <Breadcrumbs items={[{ label: "Tiendas" }, { label: cfg.name }]} />
       {/* Hero con la región seleccionada */}
       <section
         className="relative overflow-hidden"
@@ -172,36 +175,9 @@ export default async function TiendaRegion({
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {products.map((product) => {
-              const variant = product.variants?.[0]
-              const price = variant?.calculated_price?.calculated_amount
-              return (
-                <LocalizedClientLink
-                  key={product.id}
-                  href={`/products/${product.handle}`}
-                  className="group bg-white rounded-xl overflow-hidden border border-gray-200 hover:shadow-xl transition-all"
-                >
-                  <div className="aspect-square bg-gray-100 flex items-center justify-center overflow-hidden">
-                    {product.thumbnail ? (
-                      <img src={product.thumbnail} alt={product.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                    ) : (
-                      <span className="text-5xl opacity-20">🐾</span>
-                    )}
-                  </div>
-                  <div className="p-4">
-                    <h3 className="text-sm font-semibold line-clamp-2 mb-2" style={{ color: "#0d1816" }}>{product.title}</h3>
-                    {price != null && (
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-lg font-black" style={{ color: "#0d1816" }}>
-                          ${price.toLocaleString("es-AR")}
-                        </span>
-                        <span className="text-xs text-gray-500">ARS</span>
-                      </div>
-                    )}
-                  </div>
-                </LocalizedClientLink>
-              )
-            })}
+            {products.map((product) => (
+              <ProductCardMascotera key={product.id} product={product} />
+            ))}
           </div>
         )}
       </section>
