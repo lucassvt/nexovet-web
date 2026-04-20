@@ -1,5 +1,6 @@
 import { Metadata } from "next"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import Breadcrumbs from "@modules/common/components/breadcrumbs"
 
 export const metadata: Metadata = {
   title: "Televeterinaria — La Mascotera",
@@ -9,6 +10,7 @@ export const metadata: Metadata = {
 export default function Televeterinaria() {
   return (
     <div style={{ background: "#fafafa" }}>
+      <Breadcrumbs items={[{ label: "Servicios" }, { label: "Televeterinaria" }]} />
       <section style={{ background: "linear-gradient(135deg, #2e9e8a 0%, #3ec2a9 100%)", color: "#fff" }}>
         <div className="content-container py-20">
           <span className="inline-block text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#0d1816" }}>
@@ -84,9 +86,6 @@ export default function Televeterinaria() {
           <LocalizedClientLink href="/televeterinaria/agendar" className="inline-block px-10 py-4 rounded font-bold uppercase tracking-wide transition-transform hover:scale-105" style={{ background: "#0d1816", color: "#f6a906" }}>
             Agendar consulta
           </LocalizedClientLink>
-          <p className="mt-4 text-sm" style={{ color: "rgba(13,24,22,0.6)" }}>
-            Próximamente — En desarrollo
-          </p>
         </div>
       </section>
     </div>

@@ -115,6 +115,43 @@ export default async function Home({ params }: { params: Promise<{ countryCode: 
               <span>💳 Mercado Pago / MODO</span>
             </div>
           </div>
+
+          {/* Decoración lateral SVG */}
+          <div
+            aria-hidden="true"
+            className="hidden lg:block absolute right-8 bottom-8 opacity-15 pointer-events-none"
+            style={{ zIndex: 0 }}
+          >
+            <svg width="320" height="320" viewBox="0 0 100 100" fill="none">
+              <path d="M30 25 C25 25 22 30 22 36 C22 42 25 46 30 46 C34 46 37 42 37 36 C37 30 34 25 30 25 Z" fill="#f6a906" />
+              <path d="M45 18 C40 18 37 23 37 29 C37 35 40 39 45 39 C49 39 52 35 52 29 C52 23 49 18 45 18 Z" fill="#f6a906" />
+              <path d="M62 25 C57 25 54 30 54 36 C54 42 57 46 62 46 C66 46 69 42 69 36 C69 30 66 25 62 25 Z" fill="#f6a906" />
+              <path d="M78 38 C73 38 70 43 70 49 C70 55 73 59 78 59 C82 59 85 55 85 49 C85 43 82 38 78 38 Z" fill="#f6a906" />
+              <path d="M50 50 C38 50 28 58 28 70 C28 80 38 85 50 85 C62 85 72 80 72 70 C72 58 62 50 50 50 Z" fill="#2e9e8a" />
+            </svg>
+          </div>
+        </div>
+      </section>
+
+      {/* STATS BAR */}
+      <section className="border-b border-gray-200" style={{ background: "#fff" }}>
+        <div className="content-container py-6 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+          <div>
+            <div className="text-2xl md:text-3xl font-black" style={{ color: "#f6a906" }}>+40</div>
+            <p className="text-xs uppercase tracking-widest text-gray-500 mt-1">Sucursales NOA</p>
+          </div>
+          <div>
+            <div className="text-2xl md:text-3xl font-black" style={{ color: "#2e9e8a" }}>8</div>
+            <p className="text-xs uppercase tracking-widest text-gray-500 mt-1">Regiones c/ stock propio</p>
+          </div>
+          <div>
+            <div className="text-2xl md:text-3xl font-black" style={{ color: "#0d1816" }}>1.815</div>
+            <p className="text-xs uppercase tracking-widest text-gray-500 mt-1">Productos online</p>
+          </div>
+          <div>
+            <div className="text-2xl md:text-3xl font-black" style={{ color: "#f6a906" }}>24-48h</div>
+            <p className="text-xs uppercase tracking-widest text-gray-500 mt-1">Entrega intra-prov.</p>
+          </div>
         </div>
       </section>
 

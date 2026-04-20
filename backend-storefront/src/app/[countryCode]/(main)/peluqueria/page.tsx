@@ -1,5 +1,6 @@
 import { Metadata } from "next"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import Breadcrumbs from "@modules/common/components/breadcrumbs"
 
 export const metadata: Metadata = {
   title: "Peluquería canina — La Mascotera",
@@ -9,6 +10,7 @@ export const metadata: Metadata = {
 export default function Peluqueria() {
   return (
     <div style={{ background: "#fafafa" }}>
+      <Breadcrumbs items={[{ label: "Servicios" }, { label: "Peluquería canina" }]} />
       <section style={{ background: "#0d1816", color: "#fff" }}>
         <div className="content-container py-20">
           <span className="inline-block text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#f6a906" }}>
