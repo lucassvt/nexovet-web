@@ -79,6 +79,23 @@ export default async function Footer() {
           </div>
         </div>
 
+        {/* Trust / certificaciones */}
+        <div className="py-6 flex flex-wrap items-center justify-between gap-4" style={{ borderTop: "1px solid rgba(255,255,255,0.1)" }}>
+          <div className="flex items-center gap-4 flex-wrap">
+            <span className="text-xs uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.5)" }}>Compra segura</span>
+            <a href="https://www.cace.org.ar/socios" target="_blank" rel="noopener noreferrer" title="Miembro CACE" className="inline-flex items-center gap-2 px-3 py-1.5 rounded bg-white hover:scale-105 transition-transform">
+              <span className="font-black text-xs" style={{ color: "#003f7f" }}>CACE</span>
+              <span className="text-[10px] font-semibold" style={{ color: "#555" }}>Cámara Argentina de Comercio Electrónico</span>
+            </a>
+            <a href="https://www.argentina.gob.ar/aaip/datospersonales" target="_blank" rel="noopener noreferrer" title="Ley 25.326 Protección de Datos Personales" className="inline-flex items-center gap-1 px-3 py-1.5 rounded bg-white hover:scale-105 transition-transform">
+              <span className="font-black text-xs" style={{ color: "#0d1816" }}>🔒 Datos Protegidos</span>
+            </a>
+            <a href="/ar/arrepentimiento" title="Botón de arrepentimiento Decreto 276/98" className="inline-flex items-center gap-1 px-3 py-1.5 rounded" style={{ background: "#d32f2f", color: "#fff" }}>
+              <span className="text-[11px] font-black uppercase">Botón de Arrepentimiento</span>
+            </a>
+          </div>
+        </div>
+
         <div className="py-6 flex flex-wrap items-center justify-between gap-4" style={{ borderTop: "1px solid rgba(255,255,255,0.1)" }}>
           <div className="flex items-center gap-3 flex-wrap">
             <span className="text-xs uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.5)" }}>Pagá con</span>

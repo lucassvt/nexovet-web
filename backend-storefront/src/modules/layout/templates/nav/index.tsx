@@ -13,7 +13,39 @@ export default async function Nav() {
 
   return (
     <div className="sticky top-0 inset-x-0 z-50 group">
-      {/* Top bar */}
+      {/* Ayuda strip (estilo Puppis) */}
+      <div
+        className="hidden small:block text-xs"
+        style={{ background: "#0d1816", color: "rgba(255,255,255,0.75)" }}
+      >
+        <div className="content-container py-1.5 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-5">
+            <a href="tel:+5493812391001" className="flex items-center gap-1.5 hover:text-[#f6a906] transition-colors">
+              <span>📞</span>
+              <span>+54 381 239 1001</span>
+            </a>
+            <a href="https://wa.me/5493812391001" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 hover:text-[#f6a906] transition-colors">
+              <span>📱</span>
+              <span>WhatsApp</span>
+            </a>
+            <span className="text-[11px]" style={{ color: "rgba(255,255,255,0.5)" }}>
+              Lun a Vie 9-21h · Sáb 9-20:30h · Dom 10-20h
+            </span>
+          </div>
+          <div className="flex items-center gap-5">
+            <LocalizedClientLink href="/faq" className="hover:text-[#f6a906] transition-colors">
+              Centro de ayuda
+            </LocalizedClientLink>
+            <LocalizedClientLink href="/sucursales" className="hover:text-[#f6a906] transition-colors">
+              Sucursales
+            </LocalizedClientLink>
+            <LocalizedClientLink href="/account" className="hover:text-[#f6a906] transition-colors">
+              Iniciar sesión
+            </LocalizedClientLink>
+          </div>
+        </div>
+      </div>
+      {/* Top bar promo */}
       <div
         className="text-xs py-1.5 text-center font-semibold"
         style={{ background: "#f6a906", color: "#0d1816" }}
