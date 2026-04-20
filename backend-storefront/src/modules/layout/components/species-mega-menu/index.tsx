@@ -111,6 +111,7 @@ const QUICK_LINKS = [
   { href: "/televeterinaria", emoji: "🩺", label: "Televeterinaria" },
   { href: "/peluqueria", emoji: "✂️", label: "Peluquería" },
   { href: "/club", emoji: "🏆", label: "Club" },
+  { href: "/envio-programado", emoji: "🗓️", label: "Envío Programado" },
 ]
 
 export default function SpeciesMegaMenu() {

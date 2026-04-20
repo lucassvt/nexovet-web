@@ -28,6 +28,7 @@ const SPECIES: Array<{ name: string; slug: string; emoji: string }> = [
 
 const SERVICES: Array<{ name: string; href: string; emoji: string }> = [
   { name: "Club La Mascotera", href: "/club", emoji: "🏆" },
+  { name: "Envío Programado", href: "/envio-programado", emoji: "🗓️" },
   { name: "Televeterinaria", href: "/televeterinaria", emoji: "🩺" },
   { name: "Peluquería canina", href: "/peluqueria", emoji: "✂️" },
   { name: "Nuestras sucursales", href: "/sucursales", emoji: "📍" },
