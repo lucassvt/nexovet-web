@@ -4,13 +4,17 @@ import ChevronDown from "@modules/common/icons/chevron-down"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
+import LoyaltyCard from "@modules/club/loyalty-card"
+import type { ClubSaldo } from "@lib/data/club"
 
 type OverviewProps = {
   customer: HttpTypes.StoreCustomer | null
   orders: HttpTypes.StoreOrder[] | null
+  saldo?: ClubSaldo | null
+  showWelcome?: boolean
 }
 
-const Overview = ({ customer, orders }: OverviewProps) => {
+const Overview = ({ customer, orders, saldo = null, showWelcome = false }: OverviewProps) => {
   return (
     <div data-testid="overview-page-wrapper">
       <div className="hidden small:block">
@@ -29,10 +33,26 @@ const Overview = ({ customer, orders }: OverviewProps) => {
             </span>
           </span>
         </div>
-        <div className="flex flex-col py-8 border-t border-gray-200">
-          <div className="flex flex-col gap-y-4 h-full col-span-1 row-span-2 flex-1">
+
+        {showWelcome && saldo && (
+          <div
+            className="mb-6 p-4 rounded-lg text-sm"
+            style={{ background: "#fff3d6", color: "#0d1816", border: "1px solid #f6a906" }}
+            data-testid="welcome-banner"
+          >
+            <strong>¡Bienvenido al Club La Mascotera!</strong> Te acreditamos{" "}
+            <strong>{saldo.balance} puntos</strong> de bienvenida. Empezá a comprar y sumá más.
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="md:col-span-1">
+            <LoyaltyCard saldo={saldo} />
+          </div>
+
+          <div className="md:col-span-2 flex flex-col py-4 border-t border-gray-200 md:border-t-0 md:pt-0">
             <div className="flex items-start gap-x-16 mb-6">
-              <div className="flex flex-col gap-y-4">
+              <div className="flex flex-col gap-y-2">
                 <h3 className="text-large-semi">Perfil</h3>
                 <div className="flex items-end gap-x-2">
                   <span
@@ -48,7 +68,7 @@ const Overview = ({ customer, orders }: OverviewProps) => {
                 </div>
               </div>
 
-              <div className="flex flex-col gap-y-4">
+              <div className="flex flex-col gap-y-2">
                 <h3 className="text-large-semi">Direcciones</h3>
                 <div className="flex items-end gap-x-2">
                   <span

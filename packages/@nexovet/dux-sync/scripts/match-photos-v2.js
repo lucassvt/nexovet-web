@@ -53,9 +53,9 @@ const SYNONYMS = [
   ['carne', 'beef', 'vacuno', 'res'],
   ['arroz', 'rice'],
   ['atun', 'tuna'],
-  // marcas conocidas (ayuda a cluster)
-  ['royal canin', 'royal', 'rc'],
-  ['pro plan', 'proplan', 'pro-plan'],
+  // marcas conocidas (ayuda a cluster) - el primer token es canonical
+  ['royal', 'royal canin', 'rc'],
+  ['proplan', 'pro plan', 'pro-plan'],
   ['excellent', 'purina excellent'],
   ['pedigree'],
   ['whiskas'],
@@ -77,6 +77,12 @@ const THERAPEUTIC_KEYWORDS = new Set([
 // age/life-stage: tambien bloqueante. cachorro != adulto != senior != gatito
 const AGE_KEYWORDS = new Set(['cachorro', 'adulto', 'senior', 'gatito']);
 
+// Especie: perro vs gato. BLOQUEANTE si ambos tienen especie distinta.
+const SPECIES_KEYWORDS = new Set(['perro', 'gato']);
+
+// Formato: wet (lata/salsa/pouch) vs dry (seco/bolsa). BLOQUEANTE si difieren.
+const WET_KEYWORDS = new Set(['salsa', 'lata', 'pouch', 'wet', 'humedo', 'sobre', 'sachet']);
+
 // tamano-raza: mini/mediano/grande (si ambos lo tienen, deben coincidir)
 const BREED_SIZE_KEYWORDS = new Set(['mini', 'mediano', 'grande']);
 
@@ -97,10 +103,14 @@ function stripAccents(s) {
 
 function normalize(s) {
   if (!s) return '';
-  return stripAccents(String(s)).toLowerCase()
-    .replace(/[\(\),\.;:\-\_\/\\\+]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  // IMPORTANT: preservar decimales antes de strip (convertir coma a punto)
+  let t = stripAccents(String(s)).toLowerCase();
+  t = t.replace(/(\d),(\d)/g, '$1.$2');
+  // strip: no tocar puntos entre digitos
+  t = t.replace(/\.(?!\d)/g, ' ');  // punto no seguido de digito -> espacio
+  t = t.replace(/(?<!\d)\./g, ' ');  // punto no precedido por digito -> espacio
+  t = t.replace(/[\(\),;:\-\_\/\\\+]+/g, ' ');
+  return t.replace(/\s+/g, ' ').trim();
 }
 
 // Normaliza unidades/tamanos: 1,5kg -> 1.5kg, 10 gr -> 10g, 340gr -> 340g
@@ -135,41 +145,75 @@ function extractSizes(s) {
   return sizes;
 }
 
+// Abreviaciones comunes Medusa -> expansion
+const ABBREV = {
+  'ad': 'adulto',
+  'cach': 'cachorro',
+  'cacho': 'cachorro',
+  'cord': 'cordero',
+  'rp': 'mini',
+  'rg': 'grande',
+  'rm': 'mediano',
+  'p': null,  // "P+" = Pets Plus, tratar con bigram
+  'kgs': null,
+  'mg': null,
+  'comp': null,
+  'eo': null, // "EO" en latas = End Of (packaging)
+  'cg': null,
+  'lc': null,
+};
+
 // Tokenizar + canonicalizar sinonimos
+const STOP_WORDS = new Set(['de', 'del', 'la', 'el', 'los', 'las', 'para', 'x', 'con', 'y', 'por', 'en', 'n', 'a']);
+const BIGRAMS = { 'royal canin': 'royal', 'pro plan': 'proplan', 'old prince': 'oldprince',
+    'vital can': 'vitalcan', 'science diet': 'hills', 'razas pequenas': 'mini', 'raza pequena': 'mini',
+    'razas pequena': 'mini', 'razas grandes': 'grande', 'raza grande': 'grande',
+    'raza mediana': 'mediano', 'mordida pequena': 'mini', 'mordida mediana': 'mediano',
+    'pets plus': 'petsplus', 'bolas pelo': 'hairball', 'bola pelo': 'hairball',
+    '7 vidas': '7vidas', 'dog chow': 'dogchow', 'cat chow': 'catchow' };
+
 function tokenize(s) {
   const norm = normalizeUnits(normalize(s));
   const raw = norm.split(' ').filter(Boolean);
   const tokens = [];
-  // Primero: manejar bigramas sinonimos conocidos (ej "royal canin", "pro plan")
-  const bigramMap = { 'royal canin': 'royal', 'pro plan': 'proplan', 'old prince': 'oldprince',
-    'vital can': 'vitalcan', 'science diet': 'hills', 'razas pequenas': 'mini', 'raza pequena': 'mini',
-    'pets plus': 'petsplus', 'bolas pelo': 'hairball', 'bola pelo': 'hairball' };
   let i = 0;
   while (i < raw.length) {
+    // bigrama?
     if (i + 1 < raw.length) {
       const bi = raw[i] + ' ' + raw[i + 1];
-      if (bigramMap[bi]) {
-        tokens.push(bigramMap[bi]);
+      if (BIGRAMS[bi]) {
+        tokens.push(BIGRAMS[bi]);
         i += 2;
         continue;
       }
     }
     let t = raw[i];
-    // canonicalizar
-    if (CANONICAL[t]) t = CANONICAL[t];
-    // stop words y ruidos
-    if (['de', 'del', 'la', 'el', 'los', 'las', 'para', 'x', 'con', 'y', 'por', 'en'].includes(t)) { i++; continue; }
-    if (t.length <= 1) { i++; continue; }
-    tokens.push(t);
     i++;
+    // abreviacion?
+    if (t in ABBREV) {
+      const exp = ABBREV[t];
+      if (exp === null) continue;
+      t = exp;
+    }
+    // canonical?
+    if (CANONICAL[t]) t = CANONICAL[t];
+    // stop words
+    if (STOP_WORDS.has(t)) continue;
+    if (t.length <= 1) continue;
+    tokens.push(t);
   }
-  return tokens;
+  // dedupe manteniendo orden
+  return [...new Set(tokens)];
 }
 
 // extraer marca del string (primera palabra que matchee marca conocida)
 const KNOWN_BRANDS = ['royal', 'proplan', 'excellent', 'pedigree', 'whiskas', 'oldprince', 'eukanuba',
   'nutrique', 'vitalcan', 'hills', 'agility', 'exceed', 'sieger', '7vidas', 'dogchow', 'catchow',
-  'purina', 'optimum', 'sheba', 'gatsy', 'nutripower', 'naturalista', 'petsplus', 'amigo', 'kongo'];
+  'purina', 'optimum', 'sheba', 'gatsy', 'nutripower', 'naturalista', 'petsplus', 'amigo', 'kongo',
+  'balanced', 'complete', 'senda', 'fawna', 'jaspe', 'club', 'performance', 'bravecto', 'nextgard',
+  'nexgard', 'babs', 'procolor', 'osspret', 'andis', 'growis', 'bioganic', 'giacoccide', 'urovier',
+  'enzimol', 'cardina', 'supreme', 'kanina', 'bozito', 'brit', 'ken-l-ration', 'taste', 'acana',
+  'orijen', 'advance', 'holistic', 'monge', 'farmina', 'n-d', 'natural'];
 
 function extractBrand(tokens) {
   for (const t of tokens) {
@@ -195,11 +239,54 @@ function ageLine(tokens, rawText) {
     const c = CANONICAL[t] || t;
     if (AGE_KEYWORDS.has(c)) out.add(c);
   }
-  // tambien detectar "cach" como cachorro, "ad" como adulto (muy frecuente en Medusa titulos)
-  if (/\bcach\b/.test(rawText)) out.add('cachorro');
-  // "AD" aislado es adulto. Muy comun ej "OLD PRINCE CORD Y ARROZ CACH X 15 KGS" vs "... AD ..."
-  if (/\bad\b/.test(rawText) && !out.has('cachorro')) out.add('adulto');
+  // tambien detectar "cach" como cachorro, "ad" como adulto
+  if (/\bcach\w*/.test(rawText)) out.add('cachorro');
+  if (/\b(kitten|kittten|puppy)\b/.test(rawText)) {
+    // puppy para perros = cachorro; kitten para gatos = gatito
+    if (/\bkitt?en\b/.test(rawText)) out.add('gatito');
+    else out.add('cachorro');
+  }
+  // "AD" aislado es adulto
+  if (/\bad\b/.test(rawText) && !out.has('cachorro') && !out.has('gatito')) out.add('adulto');
+  // "7+" o "senior" ya estan cubiertos via canonical
   return out;
+}
+
+// especie canonical
+function speciesLine(tokens, rawText) {
+  const out = new Set();
+  for (const t of tokens) {
+    const c = CANONICAL[t] || t;
+    if (SPECIES_KEYWORDS.has(c)) out.add(c);
+  }
+  // heuristicas extras
+  if (/\b(katze|kitten|kittten|feline)\b/.test(rawText)) out.add('gato');
+  if (/\bcanine\b/.test(rawText)) out.add('perro');
+  return out;
+}
+
+function speciesCompatible(sA, sB) {
+  if (sA.size === 0 || sB.size === 0) return true;
+  for (const x of sA) if (sB.has(x)) return true;
+  return false;
+}
+
+// Detectar si es wet (1) o dry (-1) o unknown (0)
+function formatKind(tokens, rawText, sizes) {
+  for (const t of tokens) if (WET_KEYWORDS.has(t)) return 1;
+  if (/\b(salsa|lata|pouch|humedo|sobre|sachet)\b/.test(rawText)) return 1;
+  // heuristica: si tiene al menos un size >= 500g (sized in g), es dry (bolsa)
+  if (sizes && sizes.length > 0) {
+    for (const s of sizes) {
+      if (s.u === 'g' && s.v >= 500) return -1; // dry
+    }
+  }
+  return 0;
+}
+
+function formatCompatible(fA, fB) {
+  if (fA === 0 || fB === 0) return true;
+  return fA === fB;
 }
 
 function breedSize(tokens, rawText) {
@@ -231,6 +318,22 @@ function jaccard(a, b) {
   for (const x of a) if (b.has(x)) inter++;
   const union = a.size + b.size - inter;
   return inter / union;
+}
+
+// Overlap coefficient: intersection / min(|A|,|B|). Mejor cuando los sets tienen tamanos muy distintos.
+function overlap(a, b) {
+  if (a.size === 0 || b.size === 0) return 0;
+  let inter = 0;
+  for (const x of a) if (b.has(x)) inter++;
+  return inter / Math.min(a.size, b.size);
+}
+
+// Score combinado: mix de jaccard + overlap (overlap da "cuanto del lado chico coincide")
+function combinedSim(a, b) {
+  const j = jaccard(a, b);
+  const o = overlap(a, b);
+  // dar mas peso a overlap cuando los tamanos difieren mucho
+  return j * 0.6 + o * 0.4;
 }
 
 // size match: debe haber al menos un tamano en comun (tolerancia 2%)
@@ -278,6 +381,10 @@ function score(a, b) {
     return { score: 1.0, reason: 'barcode_exact', sizeExact: true };
   }
 
+  // bloque 0: especie
+  if (!speciesCompatible(a.species, b.species)) {
+    return { score: 0, reason: 'species_mismatch' };
+  }
   // bloque 1: linea terapeutica
   if (!therapeuticCompatible(a.therapeutic, b.therapeutic)) {
     return { score: 0, reason: 'therapeutic_mismatch' };
@@ -290,22 +397,44 @@ function score(a, b) {
   if (!breedCompatible(a.breed, b.breed)) {
     return { score: 0, reason: 'breed_mismatch' };
   }
-  // bloque 4: tamano (debe matchear al menos uno)
+  // bloque 4: marca (si ambos tienen marca conocida y distintas -> bloquear)
+  if (a.brand && b.brand && a.brand !== b.brand) {
+    return { score: 0, reason: 'brand_mismatch' };
+  }
+  // bloque 4b: formato wet/dry
+  if (!formatCompatible(a.format, b.format)) {
+    return { score: 0, reason: 'format_mismatch' };
+  }
+  // bloque 5: tamano (debe matchear al menos uno)
+  // Si no coincide PERO toda la demas info core matchea (brand, age, species, breed, therapeutic)
+  // entonces permitir con penalizacion 0.75x (usar imagen de variante mas cercana)
   const sz = sizeMatch(a.sizes, b.sizes);
-  if (!sz.ok) return { score: 0, reason: 'size_mismatch' };
+  let sizeFallback = false;
+  if (!sz.ok) {
+    const coreCompat = (a.brand && b.brand && a.brand === b.brand)
+      && (a.age.size > 0 && b.age.size > 0)
+      && ageCompatible(a.age, b.age);
+    if (!coreCompat) return { score: 0, reason: 'size_mismatch' };
+    sizeFallback = true; // mismo brand+age, distinto tamano: usar como fallback
+  }
 
-  // jaccard sobre tokens (sin tamano, sin stop)
-  const tokA = new Set(a.tokens.filter(t => !/^\d+(?:\.\d+)?(kg|g|ml|l)$/.test(t)));
-  const tokB = new Set(b.tokens.filter(t => !/^\d+(?:\.\d+)?(kg|g|ml|l)$/.test(t)));
-  let jac = jaccard(tokA, tokB);
+  // similarity combinada sobre tokens (sin tamano)
+  const tokA = new Set(a.tokens.filter(t => !/^\d+(?:\.\d+)?(kg|g|ml|l)$/.test(t) && !/^\d+$/.test(t)));
+  const tokB = new Set(b.tokens.filter(t => !/^\d+(?:\.\d+)?(kg|g|ml|l)$/.test(t) && !/^\d+$/.test(t)));
+  // Contar tokens de contenido compartidos (>= 2 chars, no solo numero)
+  let sharedContent = 0;
+  for (const t of tokA) if (tokB.has(t) && t.length >= 3) sharedContent++;
+  if (sharedContent < 2) {
+    // requiere al menos 2 tokens en comun para match decente
+    return { score: 0, reason: 'insufficient_overlap' };
+  }
+  let jac = combinedSim(tokA, tokB);
 
   // bonus marca: si ambos tienen la misma marca, multiplicar x1.5 (cap 1.0)
   if (a.brand && b.brand && a.brand === b.brand) {
     jac = Math.min(1.0, jac * 1.5);
-  } else if (a.brand && b.brand && a.brand !== b.brand) {
-    // marca distinta = penalizar fuerte
-    jac = jac * 0.5;
   }
+  // marca distinta ya se bloqueo arriba
 
   // proteinas: si AMBOS tienen protein y son distintas, penalizar
   if (a.proteins.size > 0 && b.proteins.size > 0) {
@@ -321,7 +450,10 @@ function score(a, b) {
     if (shared) jac = Math.min(1.0, jac * 1.1);
   }
 
-  return { score: jac, reason: 'jaccard', sizeExact: sz.exact };
+  // penalizar si fallback de tamano
+  if (sizeFallback) jac = jac * 0.75;
+
+  return { score: jac, reason: sizeFallback ? 'size_fallback' : 'jaccard', sizeExact: sz.ok && sz.exact };
 }
 
 // =========== Medusa API ===========
@@ -385,6 +517,8 @@ async function fetchAllProducts(token) {
       age: ageLine(tokens, rawNorm),
       breed: breedSize(tokens, rawNorm),
       proteins: proteins(tokens),
+      species: speciesLine(tokens, rawNorm),
+      format: formatKind(tokens, rawNorm, extractSizes(rawNorm)),
       barcode: c.barcode || null,
     };
   });
@@ -408,6 +542,8 @@ async function fetchAllProducts(token) {
       age: ageLine(tokens, rawNorm),
       breed: breedSize(tokens, rawNorm),
       proteins: proteins(tokens),
+      species: speciesLine(tokens, rawNorm),
+      format: formatKind(tokens, rawNorm, extractSizes(rawNorm)),
       barcode: null, // Medusa no tiene barcode en metadata actualmente
     };
 

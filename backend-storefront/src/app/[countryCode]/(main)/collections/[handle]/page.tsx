@@ -7,15 +7,23 @@ import { StoreCollection, StoreRegion } from "@medusajs/types"
 import CollectionTemplate from "@modules/collections/templates"
 import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
 
-type Props = {
-  params: Promise<{ handle: string; countryCode: string }>
-  searchParams: Promise<{
-    page?: string
-    sortBy?: SortOptions
-  }>
+type SearchParams = {
+  page?: string
+  sortBy?: SortOptions
+  q?: string
+  brands?: string
+  species?: string
+  minPrice?: string
+  maxPrice?: string
+  stock?: string
 }
 
-export const PRODUCT_LIMIT = 12
+type Props = {
+  params: Promise<{ handle: string; countryCode: string }>
+  searchParams: Promise<SearchParams>
+}
+
+export const PRODUCT_LIMIT = 24
 
 export async function generateStaticParams() {
   const { collections } = await listCollections({
@@ -59,7 +67,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   }
 
   const metadata = {
-    title: `${collection.title} | Medusa Store`,
+    title: `${collection.title} | Nexovet`,
     description: `${collection.title} collection`,
   } as Metadata
 
@@ -69,7 +77,16 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
 export default async function CollectionPage(props: Props) {
   const searchParams = await props.searchParams
   const params = await props.params
-  const { sortBy, page } = searchParams
+  const {
+    sortBy,
+    page,
+    q,
+    brands,
+    species,
+    minPrice,
+    maxPrice,
+    stock,
+  } = searchParams
 
   const collection = await getCollectionByHandle(params.handle).then(
     (collection: StoreCollection) => collection
@@ -85,6 +102,12 @@ export default async function CollectionPage(props: Props) {
       page={page}
       sortBy={sortBy}
       countryCode={params.countryCode}
+      q={q}
+      brands={brands}
+      species={species}
+      minPrice={minPrice}
+      maxPrice={maxPrice}
+      stock={stock}
     />
   )
 }

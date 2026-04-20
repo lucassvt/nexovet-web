@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { useSearchParams } from "next/navigation"
 
 import Register from "@modules/account/components/register"
 import Login from "@modules/account/components/login"
@@ -11,11 +12,24 @@ export enum LOGIN_VIEW {
 }
 
 const LoginTemplate = () => {
-  const [currentView, setCurrentView] = useState("sign-in")
+  const searchParams = useSearchParams()
+  const initialView =
+    searchParams?.get("view") === "register"
+      ? LOGIN_VIEW.REGISTER
+      : LOGIN_VIEW.SIGN_IN
+
+  const [currentView, setCurrentView] = useState<LOGIN_VIEW>(initialView)
+
+  // Si cambia el query param (navegacion interna) actualizamos vista.
+  useEffect(() => {
+    const v = searchParams?.get("view")
+    if (v === "register") setCurrentView(LOGIN_VIEW.REGISTER)
+    else if (v === "sign-in") setCurrentView(LOGIN_VIEW.SIGN_IN)
+  }, [searchParams])
 
   return (
-    <div className="w-full flex justify-start px-8 py-8">
-      {currentView === "sign-in" ? (
+    <div className="w-full flex justify-center px-4 py-8">
+      {currentView === LOGIN_VIEW.SIGN_IN ? (
         <Login setCurrentView={setCurrentView} />
       ) : (
         <Register setCurrentView={setCurrentView} />

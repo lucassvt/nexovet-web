@@ -4,30 +4,51 @@ import { SortOptions } from "@modules/store/components/refinement-list/sort-prod
 import StoreTemplate from "@modules/store/templates"
 
 export const metadata: Metadata = {
-  title: "Store",
-  description: "Explore all of our products.",
+  title: "Tienda",
+  description: "Explora todos nuestros productos.",
+}
+
+type SearchParams = {
+  sortBy?: SortOptions
+  page?: string
+  q?: string
+  brands?: string
+  species?: string
+  minPrice?: string
+  maxPrice?: string
+  stock?: string
 }
 
 type Params = {
-  searchParams: Promise<{
-    sortBy?: SortOptions
-    page?: string
-  }>
-  params: Promise<{
-    countryCode: string
-  }>
+  searchParams: Promise<SearchParams>
+  params: Promise<{ countryCode: string }>
 }
 
 export default async function StorePage(props: Params) {
-  const params = await props.params;
-  const searchParams = await props.searchParams;
-  const { sortBy, page } = searchParams
+  const params = await props.params
+  const searchParams = await props.searchParams
+  const {
+    sortBy,
+    page,
+    q,
+    brands,
+    species,
+    minPrice,
+    maxPrice,
+    stock,
+  } = searchParams
 
   return (
     <StoreTemplate
       sortBy={sortBy}
       page={page}
       countryCode={params.countryCode}
+      q={q}
+      brands={brands}
+      species={species}
+      minPrice={minPrice}
+      maxPrice={maxPrice}
+      stock={stock}
     />
   )
 }

@@ -89,6 +89,24 @@ const AccountNav = ({
                   </LocalizedClientLink>
                 </li>
                 <li>
+                  <LocalizedClientLink
+                    href="/account/loyalty"
+                    className="flex items-center justify-between py-4 border-b border-gray-200 px-8"
+                    data-testid="loyalty-link"
+                  >
+                    <div className="flex items-center gap-x-2">
+                      <span
+                        className="text-sm font-bold"
+                        style={{ color: "#f6a906" }}
+                      >
+                        ★
+                      </span>
+                      <span>Mis puntos</span>
+                    </div>
+                    <ChevronDown className="transform -rotate-90" />
+                  </LocalizedClientLink>
+                </li>
+                <li>
                   <button
                     type="button"
                     className="flex items-center justify-between py-4 border-b border-gray-200 px-8 w-full"
@@ -148,6 +166,15 @@ const AccountNav = ({
                   data-testid="orders-link"
                 >
                   Mis pedidos
+                </AccountNavLink>
+              </li>
+              <li>
+                <AccountNavLink
+                  href="/account/loyalty"
+                  route={route!}
+                  data-testid="loyalty-link"
+                >
+                  Mis puntos
                 </AccountNavLink>
               </li>
               <li className="text-grey-700">

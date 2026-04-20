@@ -63,7 +63,7 @@ export const listProducts = async ({
           offset,
           region_id: region?.id,
           fields:
-            "*variants.calculated_price,+variants.inventory_quantity,*variants.images,+metadata,+tags,",
+            "*variants.calculated_price,*variants.images,+metadata,+tags,*categories,*collection,*type",
           ...queryParams,
         },
         headers,
@@ -86,8 +86,9 @@ export const listProducts = async ({
 }
 
 /**
- * This will fetch 100 products to the Next.js cache and sort them based on the sortBy parameter.
- * It will then return the paginated products based on the page and limit parameters.
+ * This will fetch 100 products to the Next.js cache and sort them based on
+ * the sortBy parameter. It will then return the paginated products based on
+ * the page and limit parameters.
  */
 export const listProductsWithSort = async ({
   page = 0,
