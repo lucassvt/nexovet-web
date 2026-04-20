@@ -75,10 +75,27 @@ export default async function Home({ params }: { params: Promise<{ countryCode: 
         style={{
           background: "#0d1816",
           color: "#fff",
-          backgroundImage:
-            "radial-gradient(ellipse at top left, rgba(246,169,6,0.18) 0%, transparent 50%), radial-gradient(ellipse at bottom right, rgba(46,158,138,0.18) 0%, transparent 50%)",
         }}
       >
+        {/* Video background (desktop) */}
+        <div aria-hidden="true" className="hidden md:block absolute inset-0 pointer-events-none" style={{ zIndex: 0 }}>
+          <video
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            poster="/images/brand/fondo-degradado.png"
+            className="w-full h-full object-cover"
+            style={{ opacity: 0.35 }}
+          >
+            <source src="/videos/hero.mp4" type="video/mp4" />
+          </video>
+          <div className="absolute inset-0" style={{ background: "linear-gradient(90deg, rgba(13,24,22,0.85) 0%, rgba(13,24,22,0.55) 60%, rgba(13,24,22,0.75) 100%)" }} />
+          <div className="absolute inset-0" style={{ backgroundImage: "radial-gradient(ellipse at top left, rgba(246,169,6,0.22) 0%, transparent 55%), radial-gradient(ellipse at bottom right, rgba(46,158,138,0.22) 0%, transparent 55%)" }} />
+        </div>
+        {/* Gradient fallback (mobile) */}
+        <div aria-hidden="true" className="md:hidden absolute inset-0 pointer-events-none" style={{ zIndex: 0, backgroundImage: "radial-gradient(ellipse at top left, rgba(246,169,6,0.18) 0%, transparent 50%), radial-gradient(ellipse at bottom right, rgba(46,158,138,0.18) 0%, transparent 50%)" }} />
         <div className="content-container py-16 md:py-24 relative z-10">
           <div className="max-w-3xl">
             <span

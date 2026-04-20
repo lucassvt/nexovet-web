@@ -115,10 +115,13 @@ export default async function Footer() {
           style={{ borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: "24px", color: "rgba(255,255,255,0.55)" }}
         >
           <Text className="text-xs">© {new Date().getFullYear()} La Mascotera — Todos los derechos reservados</Text>
-          <div className="flex items-center gap-4 text-xs">
-            <span>Instagram</span>
-            <span>Facebook</span>
-            <span>TikTok</span>
+          <div className="flex items-center gap-3 text-xs">
+            <a href="https://www.instagram.com/lamascotera.noa/" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="inline-flex items-center gap-1.5 hover:text-[#f6a906] transition-colors">
+              <img src="/images/brand/instagram.png" alt="" className="h-4 w-4" />
+              <span>Instagram</span>
+            </a>
+            <a href="https://www.facebook.com/lamascotera" target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="hover:text-[#f6a906] transition-colors">Facebook</a>
+            <a href="https://www.tiktok.com/@lamascotera" target="_blank" rel="noopener noreferrer" aria-label="TikTok" className="hover:text-[#f6a906] transition-colors">TikTok</a>
           </div>
         </div>
       </div>
