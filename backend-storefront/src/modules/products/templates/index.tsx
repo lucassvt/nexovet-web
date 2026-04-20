@@ -11,6 +11,7 @@ import { notFound } from "next/navigation"
 import { HttpTypes } from "@medusajs/types"
 
 import ProductActionsWrapper from "./product-actions-wrapper"
+import Breadcrumbs from "@modules/common/components/breadcrumbs"
 
 type ProductTemplateProps = {
   product: HttpTypes.StoreProduct
@@ -31,6 +32,7 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
 
   return (
     <>
+      <Breadcrumbs items={[{ label: "Productos", href: "/store" }, { label: product.title || "Producto" }]} />
       <div
         className="content-container  flex flex-col small:flex-row small:items-start py-6 relative"
         data-testid="product-container"

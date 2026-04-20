@@ -3,7 +3,7 @@ import { HttpTypes } from "@medusajs/types"
 import { listProducts } from "@lib/data/products"
 import { getRegion } from "@lib/data/regions"
 import { sortProducts } from "@lib/util/sort-products"
-import ProductPreview from "@modules/products/components/product-preview"
+import ProductCardMascotera from "@modules/products/components/product-card-mascotera"
 import AppliedChips from "@modules/store/components/refinement-list/applied-chips"
 import { BrandOption } from "@modules/store/components/refinement-list/brand-filter"
 import EmptyState from "@modules/store/components/refinement-list/empty-state"
@@ -253,7 +253,7 @@ export default async function PaginatedProducts({
       >
         {pageProducts.map((p) => (
           <li key={p.id}>
-            <ProductPreview product={p} region={region} />
+            <ProductCardMascotera product={p} />
           </li>
         ))}
       </ul>

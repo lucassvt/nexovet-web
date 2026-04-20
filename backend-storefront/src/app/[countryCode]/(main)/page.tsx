@@ -221,6 +221,42 @@ export default async function Home({ params }: { params: Promise<{ countryCode: 
         </div>
       </section>
 
+
+      {/* REGIONES */}
+      <section style={{ background: "#fff", borderTop: "1px solid #eee" }}>
+        <div className="content-container py-16">
+          <div className="text-center mb-10">
+            <h2 className="text-3xl md:text-4xl font-black uppercase" style={{ color: "#0d1816" }}>
+              Encontranos en <span style={{ color: "#f6a906" }}>tu región</span>
+            </h2>
+            <p className="mt-2 text-gray-600">Stock y precios específicos para tu zona. Retiro en sucursal o delivery local.</p>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { slug: "catamarca", name: "Catamarca", emoji: "🌵" },
+              { slug: "chaco", name: "Chaco (Resistencia)", emoji: "🌾" },
+              { slug: "cordoba", name: "Córdoba", emoji: "🏛️" },
+              { slug: "jujuy", name: "Jujuy", emoji: "⛰️" },
+              { slug: "mendoza", name: "Mendoza", emoji: "🍷" },
+              { slug: "oran", name: "Orán", emoji: "🌳" },
+              { slug: "salta-leguizamon", name: "Salta (Leguizamón)", emoji: "☀️" },
+              { slug: "zapala", name: "Zapala", emoji: "🏔️" },
+            ].map((r) => (
+              <LocalizedClientLink
+                key={r.slug}
+                href={"/tienda/" + r.slug}
+                className="flex items-center gap-3 p-4 bg-[#fafafa] rounded-xl border border-gray-200 hover:border-[#f6a906] hover:shadow-md transition-all"
+              >
+                <span className="text-3xl">{r.emoji}</span>
+                <span className="font-bold uppercase text-sm" style={{ color: "#0d1816" }}>{r.name}</span>
+              </LocalizedClientLink>
+            ))}
+          </div>
+          <p className="text-center mt-6 text-xs text-gray-500">
+            ¿No ves tu ciudad? Hacé tu pedido desde <LocalizedClientLink href="/store" className="text-[#f6a906] font-semibold hover:underline">/store</LocalizedClientLink> y elegimos la sucursal más cercana.
+          </p>
+        </div>
+      </section>
       {/* CTA CLUB */}
       <section style={{ background: "linear-gradient(135deg, #f6a906 0%, #ffbd3a 100%)" }}>
         <div className="content-container py-16 text-center">

@@ -8,6 +8,7 @@ import RefinementList from "@modules/store/components/refinement-list"
 import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
 
 import PaginatedProducts, { PaginatedFilters } from "./paginated-products"
+import Breadcrumbs from "@modules/common/components/breadcrumbs"
 
 type StoreTemplateProps = {
   sortBy?: SortOptions
@@ -50,6 +51,8 @@ const StoreTemplate = async ({
   }
 
   return (
+    <>
+    <Breadcrumbs items={[{ label: "Tienda" }]} />
     <div
       className="flex flex-col small:flex-row small:items-start py-6 content-container font-montserrat"
       data-testid="category-container"
@@ -75,6 +78,7 @@ const StoreTemplate = async ({
         </Suspense>
       </div>
     </div>
+    </>
   )
 }
 
