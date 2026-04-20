@@ -5,6 +5,7 @@ import { StoreRegion } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import CartButton from "@modules/layout/components/cart-button"
 import SideMenu from "@modules/layout/components/side-menu"
+import RegionPill from "@modules/region-selector/components/region-pill"
 
 export default async function Nav() {
   const regions = await listRegions().then((regions: StoreRegion[]) => regions)
@@ -23,9 +24,12 @@ export default async function Nav() {
         style={{ background: "#fff", color: "#0d1816", borderBottom: "3px solid #f6a906" }}
       >
         <nav className="content-container flex items-center justify-between w-full h-full">
-          <div className="flex-1 basis-0 h-full flex items-center">
+          <div className="flex-1 basis-0 h-full flex items-center gap-3">
             <div className="h-full">
               <SideMenu regions={regions} />
+            </div>
+            <div className="hidden small:flex">
+              <RegionPill />
             </div>
           </div>
 
@@ -45,6 +49,9 @@ export default async function Nav() {
           </div>
 
           <div className="flex items-center gap-x-6 h-full flex-1 basis-0 justify-end">
+            <div className="flex small:hidden">
+              <RegionPill />
+            </div>
             <div className="hidden small:flex items-center gap-x-6 h-full text-sm font-semibold">
               <LocalizedClientLink
                 className="hover:text-[#f6a906] transition-colors"
