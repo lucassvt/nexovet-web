@@ -68,7 +68,7 @@ MODO=""; DIR=""; SIMULAR=0; SI=0; IGNORAR_ALERTAS=0; PERMITIR_PUBLICO=0
 MENSAJE=""; AUTOR=""; RAMA_NUEVA=""; REMOTO="origin"
 EXCLUIR_EXTRA=()
 
-ayuda() { sed -n '2,58p' "$0" | sed 's/^# \{0,1\}//'; }
+ayuda() { awk 'NR>1 && !/^#/{exit} NR>1{sub(/^# ?/,""); print}' "$0"; }
 valor() {
   if [ $# -lt 2 ] || [ -z "$2" ]; then
     echo "Falta el valor de $1 (ver: bash $0 --help)" >&2; exit 2
