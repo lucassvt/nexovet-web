@@ -12,13 +12,14 @@
 # Qué NO hace (garantizado):
 #   - No modifica, mueve ni borra ningún archivo de los proyectos.
 #   - No hace commit, push, pull, checkout, reset, stash ni nada parecido.
-#   - No reinicia servicios.
+#   - No reinicia servicios ni arranca procesos (pm2 solo se consulta si ya
+#     está corriendo).
 #   Lo único que escribe es el informe, en /tmp (o donde digas con --salida).
 #
 # Privacidad:
-#   El informe NO muestra contraseñas ni tokens: de los archivos .env solo
-#   lista el NOMBRE, y en cron/nginx/remotos enmascara todo lo que parezca
-#   una credencial. Igual, leelo antes de compartirlo.
+#   De los archivos .env solo lista el NOMBRE (nunca el contenido), y en
+#   cron, procesos, nginx y remotos tapa todo lo que parezca una credencial.
+#   Igual, LEELO antes de compartirlo.
 #
 # Uso:
 #   bash diagnostico.sh                      # busca en /var/www /srv /opt /home /root
@@ -30,8 +31,14 @@
 
 set -u
 umask 077
+: "${HOME:=$(getent passwd "$(id -un)" 2>/dev/null | cut -d: -f6)}"
+export HOME
 export LC_ALL=C.UTF-8 2>/dev/null || export LC_ALL=C
 export GIT_PAGER=cat PAGER=cat GIT_TERMINAL_PROMPT=0 GIT_OPTIONAL_LOCKS=0
+export GIT_SSH_COMMAND="${GIT_SSH_COMMAND:-ssh} -o BatchMode=yes -o ConnectTimeout=15"
+# Usuario real (si se corrió con sudo)
+USUARIO_REAL="${SUDO_USER:-$(id -un)}"
+HOME_REAL="$(getent passwd "$USUARIO_REAL" 2>/dev/null | cut -d: -f6)"; HOME_REAL="${HOME_REAL:-$HOME}"
 
 SALIDA="/tmp/diagnostico-git-$(hostname 2>/dev/null || echo vps)-$(date +%Y%m%d-%H%M).txt"
 EXTRA=()
@@ -48,11 +55,17 @@ tiene() { command -v "$1" >/dev/null 2>&1; }
 # Enmascara cualquier cosa que parezca credencial antes de mostrarla.
 enmascarar() {
   sed -E \
-    -e 's#(://[^:/@[:space:]]+:)[^@[:space:]]+@#\1****@#g' \
-    -e 's#(gh[pousr]_|github_pat_|APP_USR-|TEST-|sk-ant-|sk-proj-|sk-|xox[abprs]-|AKIA|AIza)[A-Za-z0-9_-]{4,}#\1****#g' \
-    -e 's#([A-Za-z0-9_]*(PASS|PASSWORD|PWD|TOKEN|SECRET|APIKEY|API_KEY|ACCESS_KEY|PRIVATE_KEY|AUTH)[A-Za-z0-9_]*[[:space:]]*[=:][[:space:]]*)[^[:space:]]+#\1****#Ig' \
-    -e 's#(Bearer[[:space:]]+)[^[:space:]]+#\1****#Ig'
+    -e 's#(://)[^/@[:space:]]+@#\1****@#g' \
+    -e 's#(gh[pousr]_|github_pat_|APP_USR-|TEST-|sk-ant-|sk-proj-|sk-|sk_|xox[abprs]-|AKIA|AIza)[A-Za-z0-9_-]{4,}#\1****#g' \
+    -e 's#(bot[0-9]{5,}:)[A-Za-z0-9_-]+#\1****#g' \
+    -e 's#(hooks\.slack\.com/services/)[^[:space:]"'"'"']+#\1****#g' \
+    -e 's#((Proxy-)?Authorization[[:space:]]*:[[:space:]]*)[^"'"'"']+#\1****#Ig' \
+    -e 's#([A-Za-z0-9_-]*(PASS|PWD|TOKEN|SECRET|KEY|AUTH)[A-Za-z0-9_-]*[[:space:]]*[=:][[:space:]]*)("[^"]*"|'"'"'[^'"'"']*'"'"'|[^[:space:]"'"'"']+)#\1****#Ig' \
+    -e 's#(Bearer|Basic|Token)[[:space:]]+[^[:space:]"'"'"']+#\1 ****#Ig' \
+    -e 's#(^|[[:space:]])(-p|-u|--password|--user|-P)([[:space:]]+|=)?([^-[:space:]][^[:space:]]*)#\1\2\3****#g'
 }
+# Para cron/pm2: además tapa cualquier cadena larga que parezca un token
+enmascarar_fuerte() { enmascarar | sed -E 's#([^A-Za-z0-9/_.-]|^)[A-Za-z0-9_-]{24,}#\1****#g'; }
 
 titulo() { printf '\n==============================================================\n%s\n==============================================================\n' "$1"; }
 
@@ -80,15 +93,19 @@ seccion_sistema() {
 }
 
 seccion_git_global() {
-  titulo "2. CONFIGURACIÓN DE GIT DE ESTE USUARIO (sin secretos)"
-  git config --global --get-regexp '^(user\.|credential\.|safe\.|init\.|pull\.|push\.|core\.hookspath|core\.excludesfile)' 2>/dev/null | enmascarar || true
-  [ -f "$HOME/.git-credentials" ] && echo "(existe $HOME/.git-credentials: hay credenciales guardadas para GitHub — no se muestran)"
-  [ -d "$HOME/.ssh" ] && echo "Claves SSH en $HOME/.ssh: $(ls "$HOME/.ssh" 2>/dev/null | grep -Ev '^(known_hosts|authorized_keys|config)' | tr '\n' ' ')"
+  titulo "2. CONFIGURACIÓN DE GIT DEL USUARIO $USUARIO_REAL (sin secretos)"
+  HOME="$HOME_REAL" git config --global --get-regexp '^(user\.|credential\.|safe\.|init\.|pull\.|push\.|core\.hookspath|core\.excludesfile|core\.sshcommand)' 2>/dev/null | enmascarar || true
+  [ -f "$HOME_REAL/.git-credentials" ] && echo "(existe $HOME_REAL/.git-credentials: hay credenciales guardadas para GitHub — no se muestran)"
+  [ -d "$HOME_REAL/.ssh" ] && echo "Claves SSH en $HOME_REAL/.ssh: $(ls "$HOME_REAL/.ssh" 2>/dev/null | grep -Ev '^(known_hosts|authorized_keys|config)' | tr '\n' ' ')"
+  [ -f "$HOME_REAL/.ssh/config" ] && echo "Hosts en ~/.ssh/config: $(awk 'tolower($1)=="host"{printf "%s ", $2}' "$HOME_REAL/.ssh/config" 2>/dev/null)"
   if tiene gh; then
     echo "--- gh auth status ---"
-    gh auth status 2>&1 | enmascarar | head -15
+    HOME="$HOME_REAL" gh auth status 2>&1 | enmascarar | head -15
   fi
 }
+
+# PIDs de procesos de node/next (por nombre del proceso, no por texto del comando)
+pids_node() { ps -eo pid=,comm= 2>/dev/null | awk '$2 ~ /^(node|nodejs|npm|next-server|next-router)/{print $1}'; }
 
 # ---------------------------------------------------------------------------
 # Descubrir proyectos
@@ -117,14 +134,11 @@ descubrir_proyectos() {
                   -o -name composer.json -o -name requirements.txt -o -name manage.py \
                   -o -name ecosystem.config.js -o -name index.php \) -print0 2>/dev/null)
   done
-  # Carpetas donde corren procesos pm2
-  if tiene pm2; then
-    while IFS= read -r d; do [ -n "$d" ] && agregar_candidato "$d"; done < <(
-      pm2 jlist 2>/dev/null | node -e '
-        let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{
-          try{const a=JSON.parse(s.slice(s.indexOf("[")));for(const p of a){const c=(p.pm2_env||{}).pm_cwd;if(c)console.log(c)}}catch(e){}
-        })' 2>/dev/null)
-  fi
+  # Carpetas donde corren procesos de node (pm2, next, medusa…), sin tocar pm2
+  local pid
+  for pid in $(pids_node); do
+    agregar_candidato "$(readlink "/proc/$pid/cwd" 2>/dev/null)"
+  done
   # Carpetas de docker compose
   if tiene docker; then
     while IFS= read -r d; do [ -n "$d" ] && agregar_candidato "$d"; done < <(
@@ -147,7 +161,7 @@ descubrir_proyectos() {
 comparar_con_github() {
   local remoto="$1" rama_remota sha_remoto relacion n
   local ls
-  ls="$(timeout 25 git -c safe.directory='*' -C "$REPO_DIR" ls-remote --symref "$remoto" HEAD 2>&1)" || {
+  ls="$(timeout --foreground 25 git -c safe.directory='*' -C "$REPO_DIR" ls-remote --symref "$remoto" HEAD 2>&1)" || {
     echo "    Comparación con GitHub: no se pudo conectar ($(echo "$ls" | tail -1 | enmascarar))"
     return
   }
@@ -170,7 +184,7 @@ comparar_con_github() {
     relacion="DIVERGIDOS: servidor y GitHub tienen commits distintos cada uno"
   fi
   echo "    Relación commits servidor ↔ GitHub: $relacion"
-  echo "    Ramas en GitHub: $(timeout 25 git -c safe.directory='*' -C "$REPO_DIR" ls-remote --heads "$remoto" 2>/dev/null | awk '{sub("refs/heads/","",$2); printf "%s ", $2}' | head -c 600)"
+  echo "    Ramas en GitHub: $(timeout --foreground 25 git -c safe.directory='*' -C "$REPO_DIR" ls-remote --heads "$remoto" 2>/dev/null | awk '{sub("refs/heads/","",$2); printf "%s ", $2}' | head -c 600)"
 }
 
 informe_git() {
@@ -178,8 +192,15 @@ informe_git() {
   REPO_DIR="$d"
   local err
   if ! err="$(G rev-parse --git-dir 2>&1)"; then
-    echo "  Git: hay carpeta .git pero git no la puede leer: $(echo "$err" | tail -2 | tr '\n' ' ')"
-    return
+    if printf '%s' "$err" | grep -qi 'dubious\|unsafe' && [ "$(id -u)" = 0 ] && command -v runuser >/dev/null 2>&1; then
+      COMO_DUENO="$(stat -c %U "$d")"
+      G() { runuser -u "$COMO_DUENO" -- git -c core.fsmonitor=false --no-pager -C "$REPO_DIR" "$@"; }
+      err="$(G rev-parse --git-dir 2>&1)" || { echo "  Git: hay carpeta .git pero git no la puede leer: $(echo "$err" | tail -2 | tr '\n' ' ')"; G() { git -c safe.directory='*' -c core.fsmonitor=false --no-pager -C "$REPO_DIR" "$@"; }; return; }
+      echo "  (git leído como el dueño '$COMO_DUENO' porque esta versión de git no confía en carpetas de otros)"
+    else
+      echo "  Git: hay carpeta .git pero git no la puede leer: $(echo "$err" | tail -2 | tr '\n' ' ')"
+      return
+    fi
   fi
   local gitdir owner_git
   gitdir="$(G rev-parse --absolute-git-dir 2>/dev/null)"
@@ -243,6 +264,7 @@ informe_git() {
   anidados="$(find "$d" -mindepth 2 -maxdepth 5 -name node_modules -prune -o -name .git -print 2>/dev/null | head -10)"
   [ -n "$anidados" ] && { echo "    OJO: hay repositorios git DENTRO del proyecto (git no guardaría su contenido):"; echo "$anidados" | sed 's/^/      /'; }
   if G remote get-url origin >/dev/null 2>&1; then comparar_con_github origin; fi
+  G() { git -c safe.directory='*' -c core.fsmonitor=false --no-pager -C "$REPO_DIR" "$@"; }
 }
 
 # Medusa usa JWT_SECRET/COOKIE_SECRET = "supersecret" si no están definidos.
@@ -298,20 +320,33 @@ informe_proyecto() {
 
 seccion_procesos() {
   titulo "4. PROCESOS QUE ESTÁN CORRIENDO"
-  if tiene pm2; then
-    echo "--- pm2 (usuario $(id -un)) ---"
-    pm2 jlist 2>/dev/null | node -e '
+  echo "--- procesos de node (carpeta en la que corren) ---"
+  local pid encontrados=0
+  for pid in $(pids_node); do
+    [ -r "/proc/$pid/cmdline" ] || continue
+    encontrados=1
+    printf '  %-10s pid %-7s carpeta=%s\n      %s\n' "$(ps -o user= -p "$pid" 2>/dev/null)" "$pid" \
+      "$(readlink "/proc/$pid/cwd" 2>/dev/null || echo '?')" "$(ps -o args= -p "$pid" 2>/dev/null | cut -c1-160 | enmascarar_fuerte)"
+  done
+  [ "$encontrados" = 0 ] && echo "  (ninguno visible; si no sos root, corré con sudo)"
+  # pm2: solo se consulta un daemon que YA esté corriendo (nunca se arranca uno nuevo)
+  local h u
+  for h in /root/.pm2 /home/*/.pm2; do
+    [ -S "$h/rpc.sock" ] || continue
+    u="$(stat -c %U "$h")"
+    echo "--- pm2 de $u ---"
+    if [ "$(id -un)" = "$u" ]; then
+      PM2_HOME="$h" pm2 jlist 2>/dev/null
+    elif [ "$(id -u)" = 0 ] && command -v runuser >/dev/null 2>&1; then
+      runuser -u "$u" -- env PM2_HOME="$h" pm2 jlist 2>/dev/null
+    fi | node -e '
       let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{
-        let a;try{a=JSON.parse(s.slice(s.indexOf("[")))}catch(e){console.log("  (no se pudo leer pm2 jlist)");return}
+        let a;try{a=JSON.parse(s.slice(s.indexOf("[")))}catch(e){console.log("  (no se pudo leer; corré con sudo)");return}
         if(!a.length)console.log("  (sin procesos)");
         for(const p of a){const e=p.pm2_env||{};const args=Array.isArray(e.args)?e.args.join(" "):(e.args||"");
           console.log(`  - ${p.name}  [${e.status}]  carpeta=${e.pm_cwd}  comando=${e.pm_exec_path} ${args}  reinicios=${e.restart_time}  NODE_ENV=${(e.env&&e.env.NODE_ENV)||e.NODE_ENV||"-"}`)}
-      })' 2>/dev/null || pm2 list 2>/dev/null
-    local otros; otros="$(ls -d /home/*/.pm2 2>/dev/null | tr '\n' ' ')"
-    [ -n "$otros" ] && echo "  (otros usuarios también usan pm2: $otros)"
-  else
-    echo "pm2 no está instalado para este usuario."
-  fi
+      })' 2>/dev/null | enmascarar_fuerte
+  done
   if tiene docker; then
     echo "--- docker ---"
     docker ps --format '  - {{.Names}}  [{{.Status}}]  imagen={{.Image}}  puertos={{.Ports}}' 2>/dev/null || echo "  (sin permiso para docker)"
@@ -355,10 +390,10 @@ seccion_cron() {
   if [ "$(id -u)" = 0 ]; then
     for u in $(cut -d: -f1 /etc/passwd); do
       local c; c="$(crontab -l -u "$u" 2>/dev/null | grep -Ev '^[[:space:]]*(#|$)')"
-      [ -n "$c" ] && { echo "--- crontab de $u ---"; echo "$c" | enmascarar | cut -c1-220; }
+      [ -n "$c" ] && { echo "--- crontab de $u ---"; echo "$c" | enmascarar_fuerte | cut -c1-220; }
     done
   else
-    crontab -l 2>/dev/null | grep -Ev '^[[:space:]]*(#|$)' | enmascarar | cut -c1-220
+    crontab -l 2>/dev/null | grep -Ev '^[[:space:]]*(#|$)' | enmascarar_fuerte | cut -c1-220
   fi
   [ -d /etc/cron.d ] && echo "--- /etc/cron.d: $(ls /etc/cron.d 2>/dev/null | tr '\n' ' ')"
   if tiene systemctl; then
@@ -383,7 +418,10 @@ main() {
   seccion_cron
   titulo "FIN"
   echo "Informe guardado en: $SALIDA"
-  echo "Leelo y, si está todo bien, copialo/pegalo en la conversación con Claude."
+  echo "Intenta ocultar contraseñas y tokens, pero LEELO antes de compartirlo"
+  echo "(buscá líneas con curl, mysqldump, token, key, password). Después pegalo en la conversación con Claude."
 }
 
 main 2>&1 | tee "$SALIDA"
+[ -n "${SUDO_USER:-}" ] && chown "$SUDO_USER" "$SALIDA" 2>/dev/null
+exit 0
