@@ -71,16 +71,24 @@ enmascarar_fuerte() { enmascarar | sed -E 's#([^A-Za-z0-9/_.-]|^)[A-Za-z0-9_-]{2
 titulo() { printf '\n==============================================================\n%s\n==============================================================\n' "$1"; }
 
 # git "de solo lectura": sin locks opcionales, sin pager, sin fsmonitor.
-# Si somos root y el repositorio es de otro usuario, git corre COMO ese usuario:
-# así la configuración de un repositorio ajeno nunca ejecuta nada como root.
+# La configuración de un repositorio (.git/config) puede ejecutar comandos, así
+# que git corre con el MISMO usuario dueño de esa carpeta .git: la configuración
+# de un repositorio ajeno nunca se ejecuta como root. Si ese dueño es root, corre
+# como root (confía en lo suyo). G_TIMEOUT=segundos pone un límite de tiempo.
 G() {
-  local dueno; dueno="$(stat -c %u "$REPO_DIR" 2>/dev/null || echo 0)"
-  if [ "$(id -u)" = 0 ] && [ "$dueno" != 0 ] && command -v runuser >/dev/null 2>&1; then
-    runuser -u "$(stat -c %U "$REPO_DIR")" -- env HOME="$(getent passwd "$(stat -c %U "$REPO_DIR")" | cut -d: -f6)" \
+  local pre=() gd uid gid h
+  [ -n "${G_TIMEOUT:-}" ] && pre=(timeout --foreground "$G_TIMEOUT")
+  gd="$REPO_DIR/.git"
+  [ -f "$gd" ] && gd="$(sed -n 's/^gitdir: //p' "$gd" | head -1)" && case "$gd" in /*) ;; *) gd="$REPO_DIR/$gd" ;; esac
+  [ -e "$gd" ] || gd="$REPO_DIR"
+  uid="$(stat -c %u "$gd" 2>/dev/null || echo 0)"; gid="$(stat -c %g "$gd" 2>/dev/null || echo 0)"
+  if [ "$(id -u)" = 0 ] && [ "$uid" != 0 ] && command -v setpriv >/dev/null 2>&1; then
+    h="$(getent passwd "$uid" | cut -d: -f6)"; [ -d "$h" ] || h=/tmp
+    "${pre[@]}" setpriv --reuid="$uid" --regid="$gid" --clear-groups -- env HOME="$h" \
       GIT_TERMINAL_PROMPT=0 GIT_OPTIONAL_LOCKS=0 GIT_SSH_COMMAND="$GIT_SSH_COMMAND" \
-      git -c core.fsmonitor=false --no-pager -C "$REPO_DIR" "$@"
+      git -c safe.directory="$REPO_DIR" -c core.fsmonitor=false --no-pager -C "$REPO_DIR" "$@"
   else
-    git -c core.fsmonitor=false --no-pager -C "$REPO_DIR" "$@"
+    "${pre[@]}" git -c safe.directory="$REPO_DIR" -c core.fsmonitor=false --no-pager -C "$REPO_DIR" "$@"
   fi
 }
 
@@ -173,7 +181,7 @@ descubrir_proyectos() {
 comparar_con_github() {
   local remoto="$1" rama_remota sha_remoto relacion n
   local ls
-  ls="$(timeout --foreground 25 G ls-remote --symref "$remoto" HEAD 2>&1)" || {
+  ls="$(G_TIMEOUT=25 G ls-remote --symref "$remoto" HEAD 2>&1)" || {
     echo "    Comparación con GitHub: no se pudo conectar ($(echo "$ls" | tail -1 | enmascarar))"
     return
   }
@@ -196,7 +204,7 @@ comparar_con_github() {
     relacion="DIVERGIDOS: servidor y GitHub tienen commits distintos cada uno"
   fi
   echo "    Relación commits servidor ↔ GitHub: $relacion"
-  echo "    Ramas en GitHub: $(timeout --foreground 25 G ls-remote --heads "$remoto" 2>/dev/null | awk '{sub("refs/heads/","",$2); printf "%s ", $2}' | head -c 600)"
+  echo "    Ramas en GitHub: $(G_TIMEOUT=25 G ls-remote --heads "$remoto" 2>/dev/null | awk '{sub("refs/heads/","",$2); printf "%s ", $2}' | head -c 600)"
 }
 
 informe_git() {
@@ -210,7 +218,7 @@ informe_git() {
   fi
   local gitdir owner_git
   gitdir="$(G rev-parse --absolute-git-dir 2>/dev/null)"
-  owner_git="$(stat -c '%U:%G' "$gitdir" 2>/dev/null)"
+  owner_git="$(stat -c '%U:%G (uid %u)' "$gitdir" 2>/dev/null | sed 's/UNKNOWN:UNKNOWN/sin nombre/')"
   echo "  Git: SÍ  (carpeta $gitdir, dueño $owner_git — vos sos $(id -un))"
   local foraneos
   foraneos="$(find "$gitdir/objects" -maxdepth 1 ! -user "$(stat -c %U "$gitdir")" 2>/dev/null | head -3 | wc -l)"
@@ -299,7 +307,7 @@ chequear_medusa() {
 informe_proyecto() {
   local d="$1"
   titulo "PROYECTO: $d"
-  echo "  Dueño de la carpeta: $(stat -c '%U:%G' "$d" 2>/dev/null)"
+  echo "  Dueño de la carpeta: $(stat -c '%U:%G (uid %u)' "$d" 2>/dev/null | sed 's/UNKNOWN:UNKNOWN/sin nombre/')"
   echo "  Tamaño (sin node_modules/.next/.git): $(timeout 90 du -sh --exclude=node_modules --exclude=.next --exclude=.git --exclude=.medusa "$d" 2>/dev/null | cut -f1)"
   local ultimo
   ultimo="$(timeout 90 find "$d" \( -name node_modules -o -name .git -o -name .next -o -name .medusa -o -name .cache \) -prune -o -type f -printf '%T@ %TY-%Tm-%Td %TH:%TM  %P\n' 2>/dev/null | sort -rn | head -3 | cut -d' ' -f2-)"

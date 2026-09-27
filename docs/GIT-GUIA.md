@@ -7,8 +7,9 @@ el servidor, sin romper nada mientras las sucursales venden.
 
 ## 0. Antes que nada: seguridad
 
-1. **El repositorio de GitHub tiene que ser privado** (ver Paso 2). Mientras sea público,
-   cualquiera puede leer el código.
+1. **Los repositorios con código de la empresa tienen que ser privados.** El de la tienda
+   (`nexovet-shop`) ya lo es. Hay una copia vieja, `nexovet-web`, que es **pública** y tiene
+   contraseñas escritas: hay que ocultarla (ver Paso 2).
 2. **Hacerlo privado no borra lo que ya se vio.** Si alguna vez hubo contraseñas escritas en
    el código (Claude les pasa la lista aparte), hay que **cambiarlas** igual: el usuario
    admin de la tienda, las bases de datos y cualquier token. Háganlo fuera del horario de venta.
@@ -29,8 +30,10 @@ el servidor, sin romper nada mientras las sucursales venden.
 
 ### Qué comandos se pueden usar en el servidor
 
-En este servidor el sistema corre en **modo desarrollo**: si cambia un archivo dentro de
-`backend/`, Medusa se reinicia solo y la tienda puede no responder entre 10 y 60 segundos.
+Hoy la tienda corre **compilada** (Medusa desde `backend/.medusa/server` y la tienda con
+`next start`): cambiar un archivo no cambia lo que ven los clientes hasta que alguien
+recompila y reinicia con pm2. Igual, un `git pull` o un `git stash` pueden dejar el código
+fuente distinto de lo que corre, y el próximo reinicio o compilación lo pone en vivo.
 
 | Seguro (no cambia archivos) | Cuidado (cambia archivos en vivo) | Peligroso (borra trabajo o sube secretos) |
 |---|---|---|
@@ -45,10 +48,13 @@ Para guardar y subir, usen siempre el script de abajo, que hace todo con los con
 
 ## 2. Dónde estamos
 
-- **Servidor:** la tienda vive en `/var/www/nexovet-shop` (backend Medusa + tienda Next.js).
-  Se trabaja directo ahí, en vivo.
-- **GitHub:** el repositorio `lucassvt/nexovet-web` tiene el código del **19 de abril de 2026**.
-  Todo lo que se hizo después existe solamente en el servidor.
+- **Servidor:** la tienda vive en `/var/www/nexovet-shop` (backend Medusa + tienda Next.js),
+  en la rama `sprint3-polish`. Se trabaja directo ahí. En el mismo servidor hay otros 25
+  proyectos (Centro de Comando, CRM, Club, Finanzas, Express, etc.).
+- **GitHub:** la tienda se guarda en el repositorio **privado** `lucassvt/nexovet-shop`. Ahí
+  hay código hasta el **28 de junio de 2026**. En el servidor hay commits de julio y agosto
+  que nunca se subieron, y unos 260 archivos cambiados desde el 20 de agosto.
+- `lucassvt/nexovet-web` es una copia vieja (abril) y **pública**: no es la que usa el servidor.
 - **Riesgo actual:** si el disco del servidor falla o alguien borra algo por error, esos
   meses de trabajo no tienen copia en ningún otro lado.
 - **Objetivo:** que `main` en GitHub sea igual a lo que corre hoy (la "versión oficial"),
@@ -118,7 +124,7 @@ ls -l
 
 Los dos archivos tienen que pesar varios KB. Si pesan 0, no sigan.
 
-Si el repositorio ya es privado, `curl` va a fallar. Una vez hecho el Paso 3, se bajan con
+Si el repositorio `nexovet-web` ya es privado, `curl` va a fallar. Una vez hecho el Paso 3, se bajan con
 el git del proyecto (`fetch` y `show` no tocan archivos del sistema):
 
 ```bash
@@ -133,8 +139,9 @@ ls -l ~/nexovet-git
 
 Si algún comando da error, no sigan: los archivos anteriores quedan como estaban.
 
-### Paso 2: Hacer privado el repositorio
+### Paso 2: Hacer privada la copia vieja
 
+El repositorio de la tienda (`nexovet-shop`) ya es privado. La copia vieja `nexovet-web` no:
 GitHub → repositorio `nexovet-web` → **Settings** → **General** → abajo de todo, en
 *Danger Zone* → **Change repository visibility** → **Private**. No afecta al servidor.
 
@@ -149,7 +156,10 @@ ssh-keygen -t ed25519 -f ~/.ssh/nexovet_deploy -N "" -C "vps nexovet-web"
 cat ~/.ssh/nexovet_deploy.pub
 ```
 
-1. En GitHub: repositorio → **Settings** → **Deploy keys** → **Add deploy key**. Pegar lo que
+(Hoy el servidor ya sube a GitHub con credenciales guardadas de root, así que este paso es
+opcional: sirve para reemplazarlas por una llave que solo abre este repositorio.)
+
+1. En GitHub: repositorio `nexovet-shop` → **Settings** → **Deploy keys** → **Add deploy key**. Pegar lo que
    mostró el `cat`, **tildar "Allow write access"** y guardar.
 2. En el servidor:
 
@@ -165,11 +175,11 @@ EOF
 ssh -T git@github-nexovet
 ```
 
-Tiene que decir algo como *"Hi lucassvt/nexovet-web! You've successfully authenticated"*.
+Tiene que decir algo como *"Hi lucassvt/nexovet-shop! You've successfully authenticated"*.
 Después:
 
 ```bash
-git -C /var/www/nexovet-shop remote set-url origin git@github-nexovet:lucassvt/nexovet-web.git
+git -C /var/www/nexovet-shop remote set-url origin git@github-nexovet:lucassvt/nexovet-shop.git
 bash ~/nexovet-git/git-vps.sh estado
 ```
 
