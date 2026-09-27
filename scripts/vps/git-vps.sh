@@ -3,13 +3,13 @@
 # git-vps.sh — Guardar en GitHub el código del servidor sin romper nada
 # =============================================================================
 #
-# Este script NUNCA modifica ni borra archivos de la tienda en vivo.
+# Sirve para cualquier proyecto del servidor (la tienda, Express, logística…).
+# Este script NUNCA modifica ni borra archivos del sistema en vivo.
 # Lo que escribe va dentro de la carpeta oculta .git (el historial) o en una
 # carpeta temporal. Única excepción: "alinear" y "guardar" pueden traer de
-# GitHub documentación (docs/, scripts/vps/, archivos .md) y archivos NUEVOS
-# fuera de backend/ y backend-storefront/, siempre que el servidor no los haya
-# modificado. Traer cambios de código de GitHub al servidor (un "deploy") NO lo
-# hace este script: se hace acompañado.
+# GitHub documentación (docs/, scripts/vps/, archivos .md de la raíz), siempre
+# que el servidor no la haya modificado. Traer cambios de código de GitHub al
+# servidor (un "deploy") NO lo hace este script: se hace acompañado.
 #
 # Nunca sube el historial local tal cual: cada foto o guardado es un único
 # cambio, revisado, encima de lo que GitHub ya tiene.
@@ -27,6 +27,11 @@
 #   guardar   El día a día (después de alinear): guarda los cambios del
 #             servidor como un commit en main y lo sube a GitHub.
 #
+#   iniciar   Para un proyecto que todavía no está en GitHub: crea la carpeta
+#             oculta .git si no existe (no toca ningún archivo) y la conecta
+#             con un repositorio PRIVADO nuevo de GitHub (--url), creado con
+#             README. Después: foto.
+#
 # USO
 #   bash git-vps.sh <modo> [carpeta] [opciones]
 #   (sin carpeta, usa /var/www/nexovet-shop)
@@ -43,6 +48,8 @@
 #   --permitir-publico   Subir aunque el repositorio de GitHub sea público.
 #   --rama NOMBRE        (foto) Nombre de la rama nueva.
 #   --remoto NOMBRE      Remoto de git (por defecto: origin).
+#   --url DIRECCIÓN      (iniciar) Repositorio nuevo de GitHub, por ejemplo
+#                        https://github.com/lucassvt/express
 #   --si                 No pedir la confirmación final (las de seguridad
 #                        se piden igual).
 #
@@ -56,7 +63,7 @@
 
 set -uo pipefail
 
-VERSION="2.1"
+VERSION="2.2"
 DIR_POR_DEFECTO="/var/www/nexovet-shop"
 : "${HOME:=$(getent passwd "$(id -un)" 2>/dev/null | cut -d: -f6)}"
 export HOME
@@ -65,7 +72,7 @@ export HOME
 # Opciones
 # ---------------------------------------------------------------------------
 MODO=""; DIR=""; SIMULAR=0; SI=0; IGNORAR_ALERTAS=0; PERMITIR_PUBLICO=0
-MENSAJE=""; AUTOR=""; RAMA_NUEVA=""; REMOTO="origin"
+MENSAJE=""; AUTOR=""; RAMA_NUEVA=""; REMOTO="origin"; URL_NUEVA=""
 EXCLUIR_EXTRA=()
 
 ayuda() { awk 'NR>1 && !/^#/{exit} NR>1{sub(/^# ?/,""); print}' "$0"; }
@@ -77,7 +84,7 @@ valor() {
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    estado|foto|alinear|guardar) MODO="$1"; shift ;;
+    estado|foto|alinear|guardar|iniciar) MODO="$1"; shift ;;
     actualizar)
       echo "Traer código de GitHub al servidor es un deploy y se hace acompañado (pedíselo a Claude). Este script no lo hace." >&2
       exit 2 ;;
@@ -89,6 +96,7 @@ while [ $# -gt 0 ]; do
     --autor)   valor "$@"; AUTOR="$2"; shift 2 ;;
     --rama)    valor "$@"; RAMA_NUEVA="$2"; shift 2 ;;
     --remoto)  valor "$@"; REMOTO="$2"; shift 2 ;;
+    --url)     valor "$@"; URL_NUEVA="$2"; shift 2 ;;
     --excluir) valor "$@"; EXCLUIR_EXTRA+=("$2"); shift 2 ;;
     -h|--help|ayuda) ayuda; exit 0 ;;
     --version) echo "git-vps.sh $VERSION"; exit 0 ;;
@@ -97,7 +105,7 @@ while [ $# -gt 0 ]; do
   esac
 done
 if [ -z "$MODO" ]; then
-  [ -n "$DIR" ] && echo "Falta el modo, o '$DIR' no es un modo válido (estado, foto, alinear, guardar)." >&2
+  [ -n "$DIR" ] && echo "Falta el modo, o '$DIR' no es un modo válido (estado, foto, alinear, guardar, iniciar)." >&2
   ayuda; exit 2
 fi
 [ -n "$DIR" ] || DIR="$DIR_POR_DEFECTO"
@@ -120,7 +128,10 @@ morir() { error "$*"; exit 1; }
 # Mensaje al cancelar una confirmación, fiel a lo que ya pasó
 cancelar() {
   if [ "$TOCO_GIT" = 1 ]; then
-    morir "Cancelado. No se subió nada. (El servidor ya se había puesto al día con GitHub sin tocar archivos de la tienda.)"
+    morir "Cancelado. No se subió nada. (El servidor ya se había puesto al día con GitHub sin tocar archivos del sistema.)"
+  fi
+  if [ "$DOCS_ESCRITOS" = 1 ]; then
+    morir "Cancelado. No se subió nada. (Se había actualizado documentación que venía de GitHub; ningún otro archivo se tocó.)"
   fi
   morir "Cancelado. No se hizo nada."
 }
@@ -145,8 +156,8 @@ ARBOL_VACIO="4b825dc642cb6eb9a060e54bf8d69288fbee4904"
 SELLO="$(date +%Y%m%d-%H%M%S)"
 TMPD=""; GITDIR=""; ARREGLAR_DUENO=0; DUENO_GIT=""; DUENO_DIR=""; PASO=""
 ALT_ORIG="${GIT_ALTERNATE_OBJECT_DIRECTORIES:-}"
-CUARENTENA=""; TOCO_GIT=0
-# Baja prioridad de CPU y disco, para no afectar a la tienda mientras corre
+CUARENTENA=""; TOCO_GIT=0; DOCS_ESCRITOS=0; ESCRIBIENDO=""
+# Baja prioridad de CPU y disco, para no afectar al sistema mientras corre
 BAJA=(nice -n 15); command -v ionice >/dev/null 2>&1 && BAJA+=(ionice -c3)
 
 # git con protecciones: sin hooks (podrían modificar archivos), sin fsmonitor,
@@ -169,7 +180,8 @@ sonda() { GIT_SSH_COMMAND="$(ssh_sin_preguntas)" timeout --foreground 45 git -c 
 limpiar() {
   local s=$?
   trap '' INT TERM HUP   # que un segundo Ctrl-C no deje la limpieza a medias
-  [ -n "$CUARENTENA" ] && rm -rf "$CUARENTENA"
+  [ -n "$CUARENTENA" ] && rm -rf -- "${CUARENTENA:?}"
+  [ -n "$ESCRIBIENDO" ] && rm -f -- "${ESCRIBIENDO:?}"
   if [ "$ARREGLAR_DUENO" = 1 ] && [ -n "$GITDIR" ] && [ -n "$DUENO_GIT" ] && [ -e "$TMPD/inicio" ]; then
     # Lo que root creó dentro de .git vuelve al dueño (sin seguir enlaces)
     find "$GITDIR" -xdev \( -uid 0 -o -gid 0 \) ! -type l -newer "$TMPD/inicio" \
@@ -189,10 +201,17 @@ al_cancelar() {
     echo
     case "$PASO" in
       rama)     error "Cancelado mientras se movía la rama de git (ningún archivo del sistema se tocó). Corré: bash $0 estado y pasale la salida a Claude." ;;
-      commit)   error "Cancelado durante la subida. Ningún archivo del sistema se tocó. Corré de nuevo: bash $0 guardar" ;;
-      escribir) error "Cancelado mientras se agregaba documentación que venía de GitHub. Ningún archivo de la tienda se tocó. Corré: bash $0 estado" ;;
+      commit)   if [ -n "$COMMIT" ] && [ -n "${RAMA_SUBIENDO:-}" ] && \
+                   [ "$(sonda ls-remote "$REMOTO" "refs/heads/$RAMA_SUBIENDO" 2>/dev/null | awk '{print $1}')" = "$COMMIT" ]; then
+                  error "Cancelado, pero GitHub YA recibió los cambios. Ningún archivo del sistema se tocó. Corré de nuevo 'bash $0 guardar' para terminar."
+                else
+                  error "Cancelado durante la subida. Ningún archivo del sistema se tocó. Corré de nuevo: bash $0 guardar"
+                fi ;;
+      escribir) error "Cancelado mientras se agregaba documentación que venía de GitHub. Ningún otro archivo se tocó. Corré: bash $0 estado" ;;
       *)        if [ "$TOCO_GIT" = 1 ]; then
-                  error "Cancelado. No se subió nada. (El servidor ya se había puesto al día con GitHub sin tocar archivos de la tienda.)"
+                  error "Cancelado. No se subió nada. (El servidor ya se había puesto al día con GitHub sin tocar archivos del sistema.)"
+                elif [ "$DOCS_ESCRITOS" = 1 ]; then
+                  error "Cancelado. No se subió nada. (Se había actualizado documentación que venía de GitHub; ningún otro archivo se tocó.)"
                 else
                   error "Cancelado por el usuario. No se cambió ningún archivo del sistema."
                 fi ;;
@@ -246,6 +265,22 @@ CLAUDE.local.md
 .lesshst
 # --- Dependencias y compilados (se regeneran) ---
 node_modules/
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+env/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+celerybeat-schedule*
+.gradle/
+android/app/build/
+android/.gradle/
+ios/Pods/
+out/
 .next/
 .medusa/
 dist/
@@ -312,6 +347,7 @@ uploads/
 *.old-*
 *.old_*
 *.deprecated
+.git-vps-*
 *.old
 *.orig
 *.rej
@@ -351,8 +387,6 @@ desktop.ini
 .vscode/
 '
 
-# Carpetas de las aplicaciones en vivo: ahí este script nunca escribe.
-APPS_EN_VIVO='backend/ backend-storefront/'
 
 # ---------------------------------------------------------------------------
 # Preparación y chequeos comunes
@@ -415,6 +449,8 @@ preparar() {
       flock -w 60 9 || morir "Sigue ocupado. Probá de nuevo cuando la otra persona termine. No se hizo nada."
     fi
   fi
+  # Restos de una ejecución anterior que se cortó de golpe (el candado asegura que no hay otra corriendo)
+  find "$GITDIR/objects" -maxdepth 1 -name 'incoming-git-vps-*' -mmin +60 -exec rm -rf {} + 2>/dev/null
   [ -e "$GITDIR/index.lock" ] && morir "Existe $GITDIR/index.lock: alguien está usando git en este momento (o quedó colgado).
    Esperá un minuto y reintentá. Si nadie está usando git y persiste, avisale a Claude."
   return 0
@@ -638,10 +674,15 @@ $grandes
     GIT_INDEX_FILE="$TMPD/indice_base" g ls-files -z -c -i --exclude-from="$TMPD/excl_extra" > "$TMPD/excl_track.z"
   fi
   # En la foto: documentación que GitHub ya tiene y el servidor nunca tuvo
-  # (docs/, scripts/vps/) no se propone borrar.
+  # (docs/, scripts/vps/, *.md de la raíz) no se propone borrar. Si el git del
+  # servidor sí la tenía y falta, es que el servidor la borró: eso se respeta.
   if [ "$MODO" = foto ] && [ -n "$ARMADO_SOBRE" ]; then
-    tr '\0' '\n' < "$TMPD/base.z" | grep -E '^(docs|scripts/vps)/' | while IFS= read -r p; do
-      [ -e "$DIR/$p" ] || [ -L "$DIR/$p" ] || printf '%s\0' "$p"
+    local head_srv; head_srv="$(g rev-parse -q --verify HEAD || true)"
+    tr '\0' '\n' < "$TMPD/base.z" | while IFS= read -r p; do
+      es_doc "$p" || continue
+      { [ -e "$DIR/$p" ] || [ -L "$DIR/$p" ]; } && continue
+      [ -n "$head_srv" ] && g cat-file -e "$head_srv:$p" 2>/dev/null && continue
+      printf '%s\0' "$p"
     done >> "$TMPD/excl_track.z"
   fi
   if [ -s "$TMPD/excl_track.z" ]; then
@@ -900,7 +941,7 @@ mostrar_resumen() {
     head -20 "$TMPD/excl_track.txt" | sed 's/^/    · /'
   fi
   # Detalle completo para revisar con calma (rutas y alertas enmascaradas, sin contenido)
-  DETALLE="${TMPDIR:-/tmp}/git-vps-detalle.txt"
+  DETALLE="${TMPDIR:-/tmp}/git-vps-detalle-$(printf '%s' "${DIR#/}" | tr '/' '_').txt"
   ( umask 077
     { echo "Detalle de la revisión — $(date '+%Y-%m-%d %H:%M') — $DIR"
       echo; echo "== Cambios ($total) =="
@@ -972,7 +1013,7 @@ resolver_autor() { # $1 = preguntar | nopreguntar
   export GIT_AUTHOR_NAME="$nombre" GIT_AUTHOR_EMAIL="$mail" GIT_COMMITTER_NAME="$nombre" GIT_COMMITTER_EMAIL="$mail"
 }
 
-COMMIT=""
+COMMIT=""; RAMA_SUBIENDO=""
 crear_commit() { # $1 = mensaje   $2 = padre (o vacío)
   local padres=()
   [ -n "${2:-}" ] && padres=(-p "$2")
@@ -1019,22 +1060,35 @@ base_sigue_en_github() { # $1 = commit base (o vacío)
 }
 
 # ---------------------------------------------------------------------------
-# Cambios que llegan de GitHub: ¿se pueden aceptar sin tocar la tienda?
+# Cambios que llegan de GitHub: ¿se pueden aceptar sin tocar el sistema?
 #   sin efecto → el servidor ya tiene esa versión (o una más nueva que él mismo subió)
-#   escribir   → archivo NUEVO fuera de las apps, o documentación (docs/,
-#                scripts/vps/, *.md) que el servidor no modificó
+#   escribir   → documentación (docs/, scripts/vps/, *.md de la raíz) que el
+#                servidor no modificó
 #   deploy     → cualquier otra cosa: este script NO lo hace
 # ---------------------------------------------------------------------------
-es_doc() { case "$1" in backend/*|backend-storefront/*) return 1 ;; docs/*|scripts/vps/*|*.md) return 0 ;; esac; return 1; }
-en_app() { local app; for app in $APPS_EN_VIVO; do case "$1" in "$app"*) return 0 ;; esac; done; return 1; }
+# Lo único que este script trae de GitHub al servidor: documentación.
+es_doc() { case "$1" in docs/*|scripts/vps/*) return 0 ;; */*) return 1 ;; *.md) return 0 ;; esac; return 1; }
 clasificar_entrantes() { # $1 desde  $2 hasta
-  local desde="$1" hasta="$2" est r blob_hasta blob_desde blob_local modo_hasta existe c
+  local desde="$1" hasta="$2" est r blob_hasta blob_desde blob_local modo_hasta existe c d
+  local ceros=0000000000000000000000000000000000000000
   : > "$TMPD/escribir.txt"; : > "$TMPD/sin_efecto.txt"; : > "$TMPD/deploy.txt"; : > "$TMPD/propios.txt"
-  # Versiones que el propio servidor subió en ramas aparte (vps/guardado-*)
+  # Versiones que el propio servidor subió (guardados): "versión anterior → versión nueva → ruta"
   for c in $(g for-each-ref --sort=-refname --count=40 --format='%(objectname)' refs/vps-guardados/); do
-    g diff-tree -r --no-renames --no-commit-id "$c" 2>/dev/null | awk '{print $4 "\t" substr($0, index($0,"\t")+1)}' >> "$TMPD/propios.txt"
+    g diff-tree -r --no-renames --no-commit-id "$c" 2>/dev/null \
+      | awk '{print $3 "\t" $4 "\t" substr($0, index($0,"\t")+1)}' >> "$TMPD/propios.txt"
   done
+  # ¿Esta versión local vino de GitHub en algún commit de desde..hasta?
+  fue_de_github() { local cc; [ -n "$2" ] || return 1
+    for cc in $(g rev-list "$desde..$hasta" -- "$1" 2>/dev/null); do
+      [ "$(g rev-parse -q --verify "$cc:$1" 2>/dev/null)" = "$2" ] && return 0
+    done; return 1; }
   while IFS= read -r -d '' est && IFS= read -r -d '' r; do
+    # Nada que pase por un enlace simbólico
+    d="$(dirname "$r")"
+    while [ "$d" != "." ] && [ "$d" != "/" ]; do
+      if [ -L "$DIR/$d" ]; then printf '[pasa por un enlace] %s\n' "$r" >> "$TMPD/deploy.txt"; continue 2; fi
+      d="$(dirname "$d")"
+    done
     existe=0; { [ -e "$DIR/$r" ] || [ -L "$DIR/$r" ]; } && existe=1
     blob_hasta=""; modo_hasta=""
     if [ "$est" != D ]; then
@@ -1050,7 +1104,8 @@ clasificar_entrantes() { # $1 desde  $2 hasta
     fi
     if [ "$est" = D ]; then
       if [ "$existe" = 0 ]; then printf '%s\n' "$r" >> "$TMPD/sin_efecto.txt"
-      elif es_doc "$r" && [ -n "$blob_local" ] && [ "$blob_local" = "$blob_desde" ]; then printf 'D\t%s\n' "$r" >> "$TMPD/escribir.txt"
+      elif es_doc "$r" && [ -n "$blob_local" ] && { [ "$blob_local" = "$blob_desde" ] || fue_de_github "$r" "$blob_local"; }; then
+        printf 'D\t%s\t%s\n' "$r" "$blob_local" >> "$TMPD/escribir.txt"
       else printf '[se borraría] %s\n' "$r" >> "$TMPD/deploy.txt"; fi
       continue
     fi
@@ -1060,30 +1115,32 @@ clasificar_entrantes() { # $1 desde  $2 hasta
       elif [ "$modo_hasta" = 100644 ] && [ -f "$DIR/$r" ] && [ -x "$DIR/$r" ]; then :
       else printf '%s\n' "$r" >> "$TMPD/sin_efecto.txt"; continue; fi
     fi
-    # GitHub tiene una versión que el mismo servidor subió antes (rama aparte ya
-    # combinada) y el servidor la siguió editando: vale la del servidor.
-    if [ "$existe" = 1 ] && [ -n "$blob_hasta" ] && grep -qxF -- "$blob_hasta	$r" "$TMPD/propios.txt"; then
+    # GitHub tiene la versión que el mismo servidor subió desde esta misma base,
+    # y el servidor la siguió editando: vale la del servidor.
+    if [ "$existe" = 1 ] && [ -n "$blob_hasta" ] && grep -qxF -- "${blob_desde:-$ceros}	$blob_hasta	$r" "$TMPD/propios.txt"; then
+      printf '%s\n' "$r" >> "$TMPD/sin_efecto.txt"; continue
+    fi
+    # El servidor lo había borrado en un guardado y GitHub lo tiene: vale el borrado del servidor.
+    if [ "$existe" = 0 ] && [ "$est" != A ] && grep -qxF -- "${blob_desde:-$ceros}	$ceros	$r" "$TMPD/propios.txt"; then
       printf '%s\n' "$r" >> "$TMPD/sin_efecto.txt"; continue
     fi
     if [ "$modo_hasta" = 120000 ] || [ "$modo_hasta" = 160000 ]; then
       printf '[enlace o submódulo] %s\n' "$r" >> "$TMPD/deploy.txt"
-    elif [ "$est" = A ] && [ "$existe" = 0 ] && ! en_app "$r"; then
-      printf 'A\t%s\n' "$r" >> "$TMPD/escribir.txt"
-    elif es_doc "$r" && [ "$existe" = 1 ] && [ -n "$blob_local" ] && [ "$blob_local" = "$blob_desde" ]; then
-      printf 'M\t%s\n' "$r" >> "$TMPD/escribir.txt"
-    elif [ "$existe" = 1 ] && [ -z "$blob_desde" ]; then
-      printf '[pisaría un archivo del servidor] %s\n' "$r" >> "$TMPD/deploy.txt"
-    elif en_app "$r"; then
-      printf '[código de la tienda] %s\n' "$r" >> "$TMPD/deploy.txt"
+    elif ! es_doc "$r"; then
+      printf '[código o archivo del sistema] %s\n' "$r" >> "$TMPD/deploy.txt"
+    elif [ "$est" = A ] && [ "$existe" = 0 ]; then
+      printf 'A\t%s\t-\n' "$r" >> "$TMPD/escribir.txt"
+    elif [ "$existe" = 1 ] && [ -n "$blob_local" ] && { [ "$blob_local" = "$blob_desde" ] || fue_de_github "$r" "$blob_local"; }; then
+      printf 'M\t%s\t%s\n' "$r" "$blob_local" >> "$TMPD/escribir.txt"
     else
-      printf '[archivo del servidor] %s\n' "$r" >> "$TMPD/deploy.txt"
+      printf '[documentación que el servidor también cambió] %s\n' "$r" >> "$TMPD/deploy.txt"
     fi
   done < <(g diff-tree -r -z --no-renames --name-status "$desde" "$hasta")
 }
 
 mostrar_entrantes() {
   if [ -s "$TMPD/escribir.txt" ]; then
-    info "  Archivos de GitHub que se agregan/actualizan en el servidor (documentación o archivos nuevos fuera de la tienda):"
+    info "  Archivos de GitHub que se agregan/actualizan en el servidor (solo documentación):"
     head -30 "$TMPD/escribir.txt" | awk -F'\t' '{ printf "    %s %s\n", ($1=="A"?"+ nuevo":($1=="M"?"~ actualiza":"- quita")), $2 }'
   fi
   [ -s "$TMPD/sin_efecto.txt" ] && info "  ($(wc -l < "$TMPD/sin_efecto.txt") cambio(s) de GitHub que el servidor ya tiene: no se toca nada)"
@@ -1155,12 +1212,21 @@ mover_rama() { # $1 rama  $2 destino  $3 valor anterior esperado (o vacío)
 # como "escribir". Cada uno se escribe completo en un temporal y se renombra.
 escribir_entrantes() { # $1 = commit de donde salen
   [ -s "$TMPD/escribir.txt" ] || return 0
-  local hasta="$1" op r top tmp modo fallas=""
+  local hasta="$1" op r esperado top tmp modo real rel fallas="" saltados=""
   PASO=escribir
-  while IFS=$'\t' read -r op r; do
+  while IFS=$'\t' read -r op r esperado; do
     [ -z "$r" ] && continue
+    # El destino real (siguiendo enlaces) tiene que seguir siendo documentación del proyecto
+    real="$(realpath -m -- "$DIR/$r" 2>/dev/null)"
+    rel="${real#"$DIR"/}"
+    if [ "$rel" = "$real" ] || ! es_doc "$rel"; then fallas+="      $r (el destino real no es documentación del proyecto)"$'\n'; continue; fi
+    # Si alguien lo editó mientras se esperaba la confirmación, no se toca
+    if [ "$op" != A ] && [ -n "$esperado" ] && [ "$esperado" != "-" ] && [ "$(g hash-object -- "$r" 2>/dev/null)" != "$esperado" ]; then
+      saltados+="      $r"$'\n'; continue
+    fi
     if [ "$op" = D ]; then
-      rm -f -- "$DIR/$r" || fallas+="      $r"$'\n'
+      rm -f -- "${DIR:?}/${r:?}" || fallas+="      $r"$'\n'
+      DOCS_ESCRITOS=1
       continue
     fi
     if [ "$op" = A ]; then
@@ -1171,19 +1237,24 @@ escribir_entrantes() { # $1 = commit de donde salen
     fi
     modo="$(g ls-tree "$hasta" -- "$r" | awk '{print $1}')"
     mkdir -p -- "$DIR/$(dirname "$r")" 2>/dev/null
-    tmp="$DIR/$(dirname "$r")/.git-vps-$$-$(basename "$r")"
+    tmp="$DIR/$(dirname "$r")/.git-vps-$$-$(basename "$r")"; ESCRIBIENDO="$tmp"
     if g cat-file blob "$hasta:$r" > "$tmp" 2>/dev/null; then
+      if [ -e "$DIR/$r" ]; then chown --reference="$DIR/$r" "$tmp" 2>/dev/null; chmod --reference="$DIR/$r" "$tmp" 2>/dev/null; fi
       [ "$modo" = 100755 ] && chmod +x "$tmp"
-      mv -f -- "$tmp" "$DIR/$r" || { rm -f -- "$tmp"; fallas+="      $r"$'\n'; }
+      mv -f -- "$tmp" "$DIR/$r" || { rm -f -- "${tmp:?}"; fallas+="      $r"$'\n'; }
     else
-      rm -f -- "$tmp"; fallas+="      $r"$'\n'
+      rm -f -- "${tmp:?}"; fallas+="      $r"$'\n'
     fi
+    ESCRIBIENDO=""
+    DOCS_ESCRITOS=1
   done < "$TMPD/escribir.txt"
   sort -u "$TMPD/escritos.txt" -o "$TMPD/escritos.txt"
   PASO=""
-  [ -z "$fallas" ] || morir "No pude escribir estos archivos de documentación (¿permisos?):
-$fallas   La rama de git no se movió y ningún archivo de la tienda se tocó. Pasale esta salida a Claude."
-  TOCO_GIT=1
+  [ -z "$saltados" ] || aviso "Estos archivos se editaron mientras esperaba la confirmación y no se tocaron:
+$saltados"
+  [ -z "$fallas" ] || morir "No pude escribir estos archivos de documentación que venían de GitHub:
+$fallas   La rama de git no se movió y ningún archivo del sistema se tocó. Pasale esta salida a Claude."
+  return 0
 }
 
 # Cuenta lo que "guardar" subiría (con las mismas reglas), sin escribir nada.
@@ -1322,9 +1393,9 @@ modo_foto() {
   crear_commit "$msg" "$base_commit"
   recordar_exclusiones
   base_sigue_en_github "$base_commit"
+  g update-ref -m "git-vps foto" "refs/vps-fotos/$SELLO" "$COMMIT"
 
   if subir "$COMMIT:refs/heads/$rama"; then
-    g update-ref -m "git-vps foto" "refs/vps-fotos/$SELLO" "$COMMIT"
     ok "Foto subida a GitHub en la rama $rama ($(g rev-parse --short "$COMMIT"))"
     if [ -n "$SLUG" ]; then
       info ""
@@ -1336,6 +1407,7 @@ modo_foto() {
     info "  y se apruebe como versión oficial. Después: bash $0 alinear"
     info "  Mientras tanto no hace falta 'guardar'. Para respaldar lo nuevo, saquen otra foto."
   else
+    g update-ref -d "refs/vps-fotos/$SELLO" "$COMMIT" 2>/dev/null
     info "  No se subió nada. Cuando se resuelva, corré de nuevo: bash $0 foto"
     exit 1
   fi
@@ -1400,9 +1472,16 @@ modo_alinear() {
     morir "Llevarlos al servidor es un deploy y se hace acompañado. Pasale esta salida a Claude. No se modificó nada."
   fi
   # Documentación que está en main y el servidor nunca tuvo (docs/, scripts/vps/): se agrega
-  g ls-tree -r --name-only "$oficial" | grep -E '^(docs|scripts/vps)/' | while IFS= read -r p; do
+  g ls-tree -r --name-only "$oficial" | while IFS= read -r p; do
+    es_doc "$p" || continue
     { [ -e "$DIR/$p" ] || [ -L "$DIR/$p" ]; } && continue
-    grep -qxF "A	$p" "$TMPD/escribir.txt" || printf 'A\t%s\n' "$p"
+    # El servidor lo tenía y lo borró: no se vuelve a escribir
+    [ -n "$head_actual" ] && g cat-file -e "$head_actual:$p" 2>/dev/null && continue
+    if g cat-file -e "$foto:$p" 2>/dev/null \
+       && [ "$(g rev-parse -q --verify "$foto:$p")" != "$(g rev-parse -q --verify "$foto^:$p" 2>/dev/null || true)" ]; then
+      continue    # la foto tenía la versión del servidor y después el servidor lo borró
+    fi
+    grep -q "^A	$p	" "$TMPD/escribir.txt" || printf 'A\t%s\t-\n' "$p"
   done >> "$TMPD/escribir.txt"
   info "  Foto:              $(g log -1 --format='%h %ad' --date=format:'%Y-%m-%d %H:%M' "$foto")"
   info "  Oficial en GitHub: $(g log -1 --format='%h %s' "$oficial")"
@@ -1421,7 +1500,7 @@ modo_alinear() {
 
   paso "Plan"
   info "  1. Guardar la posición actual de git (respaldo)."
-  info "  2. Apuntar la rama local '$RAMA_PPAL' a la versión oficial, sin tocar archivos de la tienda."
+  info "  2. Apuntar la rama local '$RAMA_PPAL' a la versión oficial, sin tocar archivos del sistema."
   mostrar_entrantes
   preguntar "Escribí SI para empezar:" SI || cancelar
 
@@ -1436,7 +1515,7 @@ modo_alinear() {
       g update-ref "refs/vps-fotos-usadas/${nombre#refs/vps-fotos/}" "$c" && g update-ref -d "$nombre" "$c"
     fi
   done <<< "$fotos"
-  ok "Servidor alineado con $RAMA_PPAL. Ningún archivo de la tienda se modificó."
+  ok "Servidor alineado con $RAMA_PPAL. Ningún archivo del sistema se modificó."
 
   contar_pendientes
   if [ "$PEND_GUARDAR" -gt 0 ]; then
@@ -1489,7 +1568,7 @@ modo_guardar() {
       info "  Para no mezclar a ciegas, tus cambios se suben a una rama APARTE (vps/guardado-$SELLO)."
       info "  Llevar esos cambios de GitHub al servidor es un deploy: se hace acompañado (pedíselo a Claude)."
     else
-      info "GitHub tiene cambios que no afectan a la tienda: el servidor se pone al día solo."
+      info "GitHub solo tiene documentación nueva: el servidor se pone al día solo."
       mostrar_entrantes
       if [ "$SIMULAR" = 1 ]; then
         padre="$b_sha"   # la simulación no escribe nada: se compara contra lo que el servidor ya tiene
@@ -1511,7 +1590,7 @@ modo_guardar() {
     if [ "$SIMULAR" = 0 ] && [ "$lado_a_lado" = 0 ] && [ "$head_sha" != "$padre" ]; then
       avisar_preparados
       mover_rama "$rama" "$padre" "$head_sha"
-      ok "No hay cambios para subir. El servidor quedó al día con GitHub (sin tocar archivos de la tienda)."
+      ok "No hay cambios para subir. El servidor quedó al día con GitHub (sin tocar archivos del sistema)."
     else
       ok "No hay nada para guardar: el servidor coincide con GitHub."
     fi
@@ -1548,28 +1627,30 @@ modo_guardar() {
   recordar_exclusiones
   base_sigue_en_github "$padre"
   if [ "$lado_a_lado" = 1 ]; then
-    subir "$COMMIT:refs/heads/vps/guardado-$SELLO" || exit 1
     g update-ref -m "git-vps guardado" "refs/vps-guardados/$SELLO" "$COMMIT"
+    subir "$COMMIT:refs/heads/vps/guardado-$SELLO" || { g update-ref -d "refs/vps-guardados/$SELLO" "$COMMIT"; exit 1; }
     ok "Cambios subidos a la rama aparte vps/guardado-$SELLO"
     [ -n "$SLUG" ] && info "  $(url_github)/compare/$rama...vps/guardado-$SELLO"
     info "  Pasale ese link a Claude para que lo combine con '$rama'."
     return 0
   fi
+  # Se anota como "propio" antes de subir: si se corta justo después de que GitHub
+  # lo aceptó, la próxima vez se reconoce como cambio del servidor.
+  g update-ref -m "git-vps guardado" "refs/vps-guardados/$SELLO" "$COMMIT"
   # Primero se sube; recién si GitHub lo aceptó se mueve la rama del servidor
-  PASO=commit
+  PASO=commit; RAMA_SUBIENDO="$rama"
   if subir "$COMMIT:refs/heads/$rama"; then
-    PASO=""
+    PASO=""; RAMA_SUBIENDO=""
     mover_rama "$rama" "$COMMIT" "$head_sha"
     asegurar_exclusiones_permanentes
     ok "Guardado y subido a GitHub ($rama): $(g rev-parse --short HEAD) \"$MENSAJE\""
     [ -n "$SLUG" ] && info "  $(url_github)/commit/$(g rev-parse HEAD)"
     return 0
   fi
-  PASO=""
+  PASO=""; RAMA_SUBIENDO=""
   if [ "$RECHAZADO" != 0 ]; then
     base_sigue_en_github "$padre"
     if subir "$COMMIT:refs/heads/vps/guardado-$SELLO"; then
-      g update-ref -m "git-vps guardado" "refs/vps-guardados/$SELLO" "$COMMIT"
       ok "Tus cambios quedaron en la rama aparte vps/guardado-$SELLO (el servidor no cambió)."
       [ -n "$SLUG" ] && info "  Pasale a Claude: $(url_github)/compare/$rama...vps/guardado-$SELLO"
       return 0
@@ -1579,7 +1660,76 @@ modo_guardar() {
   exit 1
 }
 
+# ===========================================================================
+# MODO: iniciar (proyecto sin git)
+# ===========================================================================
+modo_iniciar() {
+  command -v git >/dev/null 2>&1 || morir "git no está instalado en este servidor."
+  [ -d "$DIR" ] || morir "No existe la carpeta $DIR"
+  DIR="$(cd "$DIR" && pwd -P)"
+  local otro ya_tenia=0
+  if [ -e "$DIR/.git" ]; then
+    # Ya tiene git: solo se acepta si todavía no está conectada con ningún GitHub
+    [ -d "$DIR/.git" ] || morir "La carpeta .git de $DIR no es una carpeta común. Pasale esta salida a Claude. No se hizo nada."
+    otro="$(g rev-parse --show-toplevel 2>/dev/null || true)"
+    [ "$otro" = "$DIR" ] || morir "git no puede leer $DIR/.git. Pasale esta salida a Claude. No se hizo nada."
+    [ -z "$(g remote)" ] || morir "Esta carpeta ya tiene git y está conectada con $(g config --get remote.origin.url 2>/dev/null || g remote | head -1).
+   Para seguir: bash $0 foto $DIR --simular"
+    for otro in MERGE_HEAD rebase-merge rebase-apply CHERRY_PICK_HEAD REVERT_HEAD BISECT_LOG; do
+      [ -e "$DIR/.git/$otro" ] && morir "Hay una operación de git a medio terminar ($otro). Pasale esta salida a Claude. No se hizo nada."
+    done
+    ya_tenia=1
+  else
+    otro="$(git -c safe.directory='*' -C "$DIR" rev-parse --show-toplevel 2>/dev/null || true)"
+    [ -z "$otro" ] || morir "Esta carpeta está dentro de otro repositorio git ($otro). Pasale esta salida a Claude. No se hizo nada."
+  fi
+  [ -n "$URL_NUEVA" ] || morir "Falta --url con el repositorio nuevo de GitHub (por ejemplo: --url https://github.com/lucassvt/express)."
+  # Si nginx sirve archivos directo de esta carpeta, un .git quedaría descargable
+  if command -v nginx >/dev/null 2>&1; then
+    local rt
+    while read -r rt; do
+      [ -z "$rt" ] && continue
+      case "$DIR/" in "$rt"/*|"$rt/") morir "nginx sirve archivos directamente desde $rt: crear .git acá podría exponer el código. Pasale esto a Claude. No se hizo nada." ;; esac
+    done < <(nginx -T 2>/dev/null | awk '$1=="root"||$1=="alias"{v=$2; gsub(/[;"\047]/,"",v); sub(/\/+$/,"",v); if (v!="") print v}' | sort -u)
+  fi
+  TMPD="$(mktemp -d "${TMPDIR:-/tmp}/git-vps.XXXXXX")" || morir "No pude crear una carpeta temporal"
+  URL_REMOTO="$URL_NUEVA"
+  local remoto_guardado="$REMOTO"; REMOTO="$URL_NUEVA"
+  consultar_github
+  REMOTO="$remoto_guardado"
+  [ -n "$SLUG" ] || morir "La dirección no parece un repositorio de GitHub: $URL_NUEVA"
+  exigir_privado
+  sonda ls-remote --heads "$URL_NUEVA" > "$TMPD/heads.txt" 2>/dev/null \
+    || morir "No pude conectarme con $URL_NUEVA (¿existe el repositorio? ¿el servidor tiene credenciales?)."
+  [ -s "$TMPD/heads.txt" ] || morir "El repositorio de GitHub está vacío. Borralo y crealo de nuevo tildando 'Add a README file'."
+  paso "Plan"
+  info "  Carpeta:      $DIR"
+  info "  Repositorio:  $SLUG (privado) — rama principal: $RAMA_PPAL"
+  if [ "$ya_tenia" = 1 ]; then
+    info "  La carpeta ya tiene git (con su historial) pero no está conectada: solo se agrega la conexión."
+    info "  Su historial NO se sube tal cual: la foto va a ser un único cambio revisado."
+  else
+    info "  Se crea la carpeta oculta .git y se conecta con GitHub."
+  fi
+  info "  NO se toca ningún archivo del proyecto."
+  preguntar "Escribí SI para continuar:" SI || morir "Cancelado. No se hizo nada."
+  if [ "$ya_tenia" = 1 ]; then
+    local dueno_cfg; dueno_cfg="$(stat -c %u:%g "$DIR/.git/config" 2>/dev/null || true)"
+    g remote add origin "$URL_NUEVA" || morir "No pude conectar con GitHub."
+    [ "$(id -u)" = 0 ] && [ -n "$dueno_cfg" ] && chown "$dueno_cfg" "$DIR/.git/config" 2>/dev/null
+  else
+    { g init -q && g symbolic-ref HEAD "refs/heads/$RAMA_PPAL"; } || morir "No pude crear el repositorio."
+    g remote add origin "$URL_NUEVA" || morir "No pude conectar con GitHub."
+    if [ "$(id -u)" = 0 ] && [ "$(stat -c %u "$DIR")" != 0 ]; then
+      chown -R "$(stat -c %u:%g "$DIR")" "$DIR/.git" 2>/dev/null
+    fi
+  fi
+  ok "Listo: $DIR ya tiene git y está conectado con $SLUG. Ningún archivo del proyecto cambió."
+  info "  Próximo paso: bash $0 foto $DIR --simular   y después   bash $0 foto $DIR"
+}
+
 case "$MODO" in
+  iniciar) modo_iniciar ;;
   estado) modo_estado ;;
   foto) modo_foto ;;
   alinear) modo_alinear ;;

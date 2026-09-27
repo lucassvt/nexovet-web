@@ -1,7 +1,8 @@
 # Guía de git para Nexovet
 
 Para Lucas y Lourdes. Cómo tener en GitHub la versión oficial del código que corre en
-el servidor, sin romper nada mientras las sucursales venden.
+el servidor, sin romper nada mientras las sucursales venden. Vale para **todos** los
+proyectos del servidor (la tienda, Express, logística, finanzas, etc.), no solo la tienda.
 
 ---
 
@@ -42,27 +43,27 @@ fuente distinto de lo que corre, y el próximo reinicio o compilación lo pone e
 > **Si `git pull` dice "Please commit your changes or stash them", NO hagan `git stash`.**
 > Corran `bash ~/nexovet-git/git-vps.sh estado` y pásenle la salida a Claude.
 
+En otros proyectos (por ejemplo Express o los de Python) el sistema puede leer los archivos
+directamente: ahí un `git pull` o un `git stash` cambian lo que corre **en el momento**.
+
 Para guardar y subir, usen siempre el script de abajo, que hace todo con los controles.
 
 ---
 
 ## 2. Dónde estamos
 
-- **Servidor:** la tienda vive en `/var/www/nexovet-shop` (backend Medusa + tienda Next.js),
-  en la rama `sprint3-polish`. Se trabaja directo ahí. En el mismo servidor hay otros 25
-  proyectos (Centro de Comando, CRM, Club, Finanzas, Express, etc.).
-- **GitHub:** la tienda se guarda en el repositorio **privado** `lucassvt/nexovet-shop`. Ahí
-  hay código hasta el **28 de junio de 2026**. En el servidor hay commits de julio y agosto
-  que nunca se subieron, y unos 260 archivos cambiados desde el 20 de agosto.
+- **La versión oficial es la del servidor.** GitHub se pone igual al servidor, nunca al revés.
+- **La tienda ya está hecha:** `/var/www/nexovet-shop` → `lucassvt/nexovet-shop` (privado).
+  `main` en GitHub es igual a lo que corre, y el servidor quedó alineado el 27/09/2026.
+- **Faltan los otros proyectos del servidor.** La lista y en qué paso está cada uno está en
+  la sección 8. Se hacen de a uno, con los mismos pasos que la tienda.
 - `lucassvt/nexovet-web` es una copia vieja (abril) y **pública**: no es la que usa el servidor.
-- **Riesgo actual:** si el disco del servidor falla o alguien borra algo por error, esos
-  meses de trabajo no tienen copia en ningún otro lado.
-- **Objetivo:** que `main` en GitHub sea igual a lo que corre hoy (la "versión oficial"),
-  y que de ahí en más cada cambio quede guardado.
+- **Riesgo mientras tanto:** si el disco del servidor falla o alguien borra algo por error,
+  lo que no esté en GitHub no tiene copia en ningún otro lado.
 
 ---
 
-## 3. Los dos scripts
+## 3. Los scripts
 
 Están en `scripts/vps/` de este repositorio. Se copian al servidor **fuera** de la carpeta
 del proyecto.
@@ -71,14 +72,19 @@ del proyecto.
   están en git, qué tan desactualizados están, qué procesos corren y qué dominio apunta a
   qué carpeta). **Solo lectura.** Tapa lo que parezcan contraseñas, pero hay que leerlo
   antes de compartirlo.
-- **`git-vps.sh`**: el que guarda en GitHub. **Nunca modifica ni borra archivos de la
-  tienda.** Escribe dentro de `.git` y, como única excepción, puede traer desde GitHub
-  **documentación** (`docs/`, `scripts/vps/`, archivos `.md`) y archivos **nuevos** fuera de
-  `backend/` y `backend-storefront/`, siempre que el servidor no los haya modificado.
+- **`simular-todos.sh`**: corre la foto de prueba (`foto --simular`) en todos los proyectos,
+  uno por uno, y junta el resultado en un solo informe. **Solo lectura.**
+- **`git-vps.sh`**: el que guarda en GitHub. Sirve para cualquier proyecto: se le pasa la
+  carpeta (`bash git-vps.sh guardar /var/www/express/app`). **Nunca modifica ni borra
+  archivos del sistema.** Escribe dentro de `.git` y, como única excepción, puede traer desde
+  GitHub **documentación** (`docs/`, `scripts/vps/` y archivos `.md` de la carpeta principal),
+  siempre que el servidor no la haya modificado. Cualquier otro archivo que llegue de GitHub
+  es un deploy y no lo toca.
 
 | Modo | Cuándo | Qué hace |
 |---|---|---|
 | `estado` | Cuando quieran | Muestra cómo está todo y cuál es el próximo paso. Solo lee. |
+| `iniciar` | Una sola vez, solo en proyectos que no están en GitHub | Crea la carpeta oculta `.git` (si no existe) y la conecta con un repositorio privado nuevo. No toca archivos. |
 | `foto` | Al principio, hasta alinear | Sube **todo** lo que hay hoy a una rama nueva (`vps/foto-FECHA`) para revisarla. |
 | `alinear` | Una sola vez | Conecta el servidor con la versión oficial, cuando la foto ya se aprobó. |
 | `guardar` | El día a día | Guarda los cambios del servidor en `main` y los sube. |
@@ -86,9 +92,10 @@ del proyecto.
 Controles que hacen `foto` y `guardar` antes de subir:
 
 - **Frenan si el repositorio de GitHub es público.**
-- **Dejan afuera** los archivos nuevos que no deben ir a git: `.env`, claves, `node_modules`,
-  `.next`, `.medusa`, imágenes subidas por el admin (`backend/static`), volcados de base de
-  datos, comprimidos, logs, planillas `.csv`/`.xlsx` y copias de respaldo hechas a mano.
+- **Dejan afuera** los archivos nuevos que no deben ir a git: `.env`, claves y certificados,
+  `node_modules`, `venv` y `__pycache__` de Python, carpetas compiladas (`.next`, `.medusa`,
+  `dist`, `build`), archivos subidos por usuarios, volcados de base de datos, comprimidos,
+  logs, planillas `.csv`/`.xlsx` y copias de respaldo hechas a mano (`.bak`, `.old`, etc.).
   Muestran la lista de lo que quedó afuera. Todo eso **sigue en el servidor**; solo no se sube.
 - Los archivos que **ya estaban** en git se siguen guardando. Si son planillas, datos o
   SQL, el script avisa para que los revisen.
@@ -107,10 +114,11 @@ Controles que hacen `foto` y `guardar` antes de subir:
 
 ## 4. Crear la versión oficial (una sola vez)
 
-Háganlo siempre como **el mismo usuario** del servidor: el dueño de la carpeta del
-proyecto. Para saber cuál es: `stat -c %U /var/www/nexovet-shop/.git`. Si dice `root`,
-trabajen como root. Si dice otro nombre (por ejemplo `deploy`), entren como ese usuario
-antes de seguir: `sudo -iu deploy`.
+Se hace **una vez por proyecto**. En los ejemplos, `CARPETA` es la carpeta del proyecto
+(por ejemplo `/var/www/logistica-system`). Sin carpeta, el script usa la tienda.
+
+Hoy todo se hace como **root** (el servidor sube a GitHub con las credenciales de root). Si
+root crea algo dentro de un `.git` de otro usuario, el script se lo devuelve a su dueño.
 
 ### Paso 1: Copiar los scripts al servidor
 
@@ -119,10 +127,11 @@ mkdir -p ~/nexovet-git && cd ~/nexovet-git
 RAMA=claude/git-workflow-official-version-7shxms     # cuando esto esté aprobado: RAMA=main
 curl -fsSLO https://raw.githubusercontent.com/lucassvt/nexovet-web/$RAMA/scripts/vps/git-vps.sh
 curl -fsSLO https://raw.githubusercontent.com/lucassvt/nexovet-web/$RAMA/scripts/vps/diagnostico.sh
+curl -fsSLO https://raw.githubusercontent.com/lucassvt/nexovet-web/$RAMA/scripts/vps/simular-todos.sh
 ls -l
 ```
 
-Los dos archivos tienen que pesar varios KB. Si pesan 0, no sigan.
+Los archivos tienen que pesar varios KB. Si pesan 0, no sigan.
 
 Si el repositorio `nexovet-web` ya es privado, `curl` va a fallar. Una vez hecho el Paso 3, se bajan con
 el git del proyecto (`fetch` y `show` no tocan archivos del sistema):
@@ -200,19 +209,44 @@ Tarda uno o dos minutos y deja el informe en `/tmp/diagnostico-git-….txt`. Áb
 *key* que se hayan escapado) y péguenlo en la conversación con Claude. Con eso se ve si hay
 otros sistemas en el servidor que también convenga guardar (por ejemplo, el Centro de Comando).
 
+### Paso 4b: Solo si el proyecto no está en GitHub
+
+Algunos proyectos no tienen git, o lo tienen sin conexión con GitHub (sección 8). Para esos:
+
+1. En GitHub: **New repository** → nombre (por ejemplo `express-app`) → **Private** →
+   tildar **Add a README file** → **Create repository**.
+2. En el servidor:
+
+```bash
+bash ~/nexovet-git/git-vps.sh iniciar CARPETA --url https://github.com/lucassvt/NOMBRE
+```
+
+Pide escribir `SI`. Frena si el repositorio es público o está vacío. Crea la carpeta oculta
+`.git` y la conecta; **no toca ningún archivo del proyecto**. Después sigan con el Paso 5.
+
 ### Paso 5: Foto de prueba (no sube nada)
 
 ```bash
-bash ~/nexovet-git/git-vps.sh foto --simular
+bash ~/nexovet-git/git-vps.sh foto CARPETA --simular
 ```
 
 Muestra qué archivos son nuevos, cuáles cambiaron o se borraron, qué queda afuera y si
-hay alertas. **Si hay alertas, péguenle la salida a Claude antes de seguir.**
+hay alertas. La lista completa queda en `/tmp/git-vps-detalle-…txt` (un archivo por
+proyecto). **Pásenle ese archivo a Claude antes de seguir**, haya alertas o no.
+
+Para simular **todos los proyectos de una vez** (sección 8):
+
+```bash
+bash ~/nexovet-git/simular-todos.sh
+```
+
+Revisa uno por uno, muestra una línea por proyecto y deja todo junto en
+`/tmp/simular-todos-FECHA.txt` para pasarle a Claude. Tampoco sube ni cambia nada.
 
 ### Paso 6: Foto real
 
 ```bash
-bash ~/nexovet-git/git-vps.sh foto
+bash ~/nexovet-git/git-vps.sh foto CARPETA
 ```
 
 Pide escribir `SI`. Crea en GitHub la rama `vps/foto-FECHA` con el estado exacto del
@@ -230,13 +264,13 @@ funciona.** Si quieren respaldar lo nuevo, saquen otra foto (Paso 6).
 ### Paso 8: Alinear el servidor (una sola vez)
 
 ```bash
-bash ~/nexovet-git/git-vps.sh alinear
+bash ~/nexovet-git/git-vps.sh alinear CARPETA
 ```
 
-Conecta la copia del servidor con `main` sin tocar archivos de la tienda. Si `main` tiene
-documentación que el servidor no tiene (por ejemplo, esta guía), la agrega. Si `main`
-tuviera **cambios en archivos de la tienda** que el servidor no tiene, `alinear` no hace
-nada y avisa: eso es un deploy y se hace acompañado.
+Conecta la copia del servidor con `main` sin tocar archivos del sistema. Si `main` tiene
+documentación que el servidor no tiene (por ejemplo, el README que crea GitHub), la agrega.
+Si `main` tuviera **cambios de código** que el servidor no tiene, `alinear` no hace nada y
+avisa: eso es un deploy y se hace acompañado.
 
 ---
 
@@ -247,10 +281,11 @@ nada y avisa: eso es un deploy y se hace acompañado.
 Cada vez que terminan un cambio **y funciona**:
 
 ```bash
-bash ~/nexovet-git/git-vps.sh guardar --autor "Lourdes <su-mail>" --mensaje "Banner de envíos gratis"
+bash ~/nexovet-git/git-vps.sh guardar CARPETA --autor "Lourdes <su-mail>" --mensaje "Banner de envíos gratis"
 ```
 
 Si no ponen `--mensaje`, el script lo pregunta. Pongan una frase que diga **qué** cambió.
+Si tocaron dos proyectos, corran `guardar` una vez por cada carpeta.
 
 Como los dos trabajan en la misma carpeta, un `guardar` incluye los cambios de los dos.
 Está bien, pero conviene avisarse ("guardo yo").
@@ -262,10 +297,10 @@ que dice `bash ~/nexovet-git/git-vps.sh estado`.
 
 `guardar` **nunca trae código de GitHub al servidor**:
 
-- Si GitHub solo tiene documentación (`docs/`, `scripts/vps/`, `.md`) o archivos nuevos
-  fuera de la tienda, el servidor se pone al día solo y después guarda normalmente.
-- Si GitHub tiene **cambios en archivos de la tienda** (o en archivos que el servidor también
-  cambió), `guardar` sube los cambios del servidor a una rama aparte (`vps/guardado-FECHA`)
+- Si GitHub solo tiene documentación (`docs/`, `scripts/vps/`, `.md` de la carpeta
+  principal), el servidor se pone al día solo y después guarda normalmente.
+- Si GitHub tiene **cualquier otro cambio** (código, configuración, archivos nuevos, o
+  documentación que el servidor también cambió), `guardar` sube los cambios del servidor a una rama aparte (`vps/guardado-FECHA`)
   y da un link para Claude. Cuando Claude la combina sin cambios, el siguiente `guardar`
   vuelve solo a `main`.
 
@@ -280,17 +315,21 @@ cambios de código en `main` si no van a hacer el deploy enseguida.**
 | Mensaje | Qué hacer |
 |---|---|
 | "El repositorio es PÚBLICO" | Hacerlo privado (Paso 2) y repetir. |
+| "El repositorio de GitHub está vacío" (`iniciar`) | Borrar ese repositorio en GitHub, crearlo de nuevo tildando **Add a README file** y repetir. |
+| "Esta carpeta ya tiene git y está conectada" (`iniciar`) | No hace falta `iniciar`: sigan con el Paso 5. |
+| "nginx sirve archivos directamente desde …" (`iniciar`) | No se hizo nada. Pásenle la salida a Claude: hay que resolverlo antes para no exponer el código. |
 | "ALERTAS DE SEGURIDAD … GRAVE" | Si el archivo no tiene que ir a GitHub: repetir con `--excluir 'ruta/archivo'` (queda recordado para las próximas veces). Si la contraseña está escrita dentro del código, hay que moverla al `.env` (pídanselo a Claude). Si es una falsa alarma: `--ignorar-alertas`. |
 | "Cosas para revisar" | Leer la lista. Si está todo bien, escribir `SI`. |
 | "todavía no está alineado" | Seguir el plan del Paso 5 al 8. |
 | "git no confía en esta carpeta" | Correr el comando que muestra el mensaje (`git config --global --add safe.directory …`) y repetir. |
 | "Existe index.lock" | Alguien está usando git. Esperar un minuto y repetir. |
+| "No pude conectarme con https://github.com/…" (`iniciar`) | Revisar que el nombre del repositorio esté bien escrito. Si está bien, la credencial guardada en el servidor no tiene permiso sobre ese repositorio nuevo: pásenle la salida a Claude. |
 | "No pude conectarme con GitHub" / credenciales | Revisar el Paso 3. Si dice *Host key verification failed*: `ssh -T git@github-nexovet`. |
 | "GitHub tiene cambios que el servidor todavía no tiene" | No se tocó nada; lo del servidor quedó en una rama aparte. Pasarle el link a Claude. |
 | "No pude escribir estos archivos de documentación" | Suele ser un tema de permisos. No se movió nada; pasarle la salida a Claude. |
 
-`estado`, `foto`, `alinear` y `guardar` no modifican ni borran archivos de la tienda: aunque
-algo falle a la mitad o aprieten Ctrl+C, la tienda sigue igual. `guardar` primero sube y
+`estado`, `iniciar`, `foto`, `alinear` y `guardar` no modifican ni borran archivos del
+sistema: aunque algo falle a la mitad o aprieten Ctrl+C, el sistema sigue igual. `guardar` primero sube y
 recién después mueve la rama del servidor; si la subida falla, el servidor queda como
 estaba. Cuando el script tiene que mover la rama de una forma que no es "hacia adelante"
 (por ejemplo en `alinear`), guarda antes la posición anterior en `refs/vps-respaldo/FECHA`.
@@ -309,3 +348,41 @@ estaba. Cuando el script tiene que mover la rama de una forma que no es "hacia a
 - **Pull request (PR):** un pedido para sumar una rama a `main`, que alguien revisa y aprueba.
 - **Merge:** sumar los cambios de una rama a otra.
 - **Deploy:** llevar código nuevo al servidor en vivo.
+
+---
+
+## 8. Todos los proyectos del servidor
+
+Según el diagnóstico del 27/09/2026. Se hacen de a uno: Pasos 5 a 8 (y antes el 4b si hace
+falta). **Nombre en GitHub** es el repositorio que ya existe o el que hay que crear (privado,
+con README).
+
+| Carpeta | Nombre en GitHub | Cómo está |
+|---|---|---|
+| `/var/www/nexovet-shop` | `nexovet-shop` | Hecho (27/09). Solo `guardar`. |
+| `/var/www/centro-comando` | `centro-comando` | Tiene GitHub. Falta foto. |
+| `/opt/chatbotLamascotera` | `chatbotLamascotera` | Tiene GitHub (rama `testing`, 3 commits sin subir). Falta foto. |
+| `/var/www/landigia` | `landigia` | Tiene GitHub. Falta foto. |
+| `/var/www/landing-general` | `landing-general` | Tiene GitHub. Falta foto. |
+| `/var/www/landing-lamascotera-preview` | `landing-lamascotera-preview` | Tiene GitHub, sin cambios. Falta foto. |
+| `/var/www/logistica-system` | `logistica-system` | Tiene GitHub (32 commits sin subir). Falta foto. |
+| `/var/www/mi-franquicia` | `mi-franquicia` | Tiene GitHub. Falta foto. |
+| `/var/www/milegajo` | `milegajo` | Tiene GitHub. Falta foto. |
+| `/var/www/portal-vendedores` | `portal-vendedores` | Tiene GitHub. Falta foto. |
+| `/var/www/sistema-finanzas` | `sistema-finanzas` | Tiene GitHub. Falta foto. |
+| `/var/www/sistema-rrhh` | `sistema-rrhh` | Tiene GitHub, sin cambios. Falta foto. |
+| `/var/www/club-mascotera` | (lo dice la foto) | Tiene git; el diagnóstico no lo pudo leer. Falta foto. |
+| `/var/www/crm-cerebro` | (lo dice la foto) | Ídem. |
+| `/var/www/landing-lamascotera` | (lo dice la foto) | Ídem. |
+| `/var/www/mi-sucursal` | (lo dice la foto) | Ídem. |
+| `/var/www/sistema-compras` | (lo dice la foto) | Ídem. |
+| `/opt/sistema_compras` | (lo dice la foto) | Ídem. |
+| `/opt/mcp-nexovet` | `mcp-nexovet` (crear) | Tiene git pero no GitHub: Paso 4b. |
+| `/var/www/express/app` | `express-app` (crear) | Sin git: Paso 4b. |
+| `/var/www/express/backend` | `express-backend` (crear) | Sin git: Paso 4b. |
+| `/opt/agente-gerencia` | `agente-gerencia` (crear) | Sin git: Paso 4b. |
+| `/opt/logistica-panel` | `logistica-panel` (crear) | Sin git: Paso 4b. |
+| `/opt/evolution-api` | `evolution-api-config` (crear) | Sin git (solo configuración y scripts): Paso 4b. |
+| `/opt/odoo` | `odoo-nexovet` (crear) | Sin git: Paso 4b. |
+
+`/root` no es un proyecto: no se sube.
