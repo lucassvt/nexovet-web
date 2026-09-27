@@ -1107,10 +1107,21 @@ modo_foto() {
   # La foto se arma ENCIMA de lo que GitHub ya tiene: se revisa todo lo que
   # GitHub no tiene (incluso commits del servidor que nunca se subieron) y el
   # resultado es exactamente lo que hay en el servidor.
-  local base_commit base_arbol="$ARBOL_VACIO" h
+  local base_commit base_arbol="$ARBOL_VACIO" h rama_local arriba
   base_commit="$(g rev-parse -q --verify "refs/remotes/$REMOTO/$RAMA_PPAL" || true)"
-  [ -n "$base_commit" ] && base_arbol="$(g rev-parse "$base_commit^{tree}")"
   h="$(g rev-parse -q --verify HEAD || true)"
+  # Si el servidor está en otra rama que también está en GitHub (y que ya
+  # contiene a main), la foto se arma sobre esa rama: así se conserva su historial.
+  rama_local="$(g symbolic-ref --short -q HEAD || true)"
+  if [ -n "$rama_local" ] && [ "$rama_local" != "$RAMA_PPAL" ] && [ -n "$h" ]; then
+    arriba="$(g rev-parse -q --verify "refs/remotes/$REMOTO/$rama_local" || true)"
+    if [ -n "$arriba" ] && g merge-base --is-ancestor "$arriba" "$h" \
+       && { [ -z "$base_commit" ] || g merge-base --is-ancestor "$base_commit" "$arriba"; }; then
+      base_commit="$arriba"
+      info "(El servidor está en la rama '$rama_local', que también está en GitHub: la foto se arma sobre ella y conserva su historial.)"
+    fi
+  fi
+  [ -n "$base_commit" ] && base_arbol="$(g rev-parse "$base_commit^{tree}")"
   if [ -n "$h" ] && [ -n "$base_commit" ] && ! g merge-base --is-ancestor "$h" "$base_commit"; then
     info "(El servidor tiene commits propios que GitHub no tiene; la foto incluye igual todos sus archivos.)"
   fi
