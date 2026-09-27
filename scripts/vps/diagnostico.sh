@@ -60,7 +60,8 @@ enmascarar() {
     -e 's#(bot[0-9]{5,}:)[A-Za-z0-9_-]+#\1****#g' \
     -e 's#(hooks\.slack\.com/services/)[^[:space:]"'"'"']+#\1****#g' \
     -e 's#((Proxy-)?Authorization[[:space:]]*:[[:space:]]*)[^"'"'"']+#\1****#Ig' \
-    -e 's#([A-Za-z0-9_-]*(PASS|PWD|TOKEN|SECRET|KEY|AUTH)[A-Za-z0-9_-]*[[:space:]]*[=:][[:space:]]*)("[^"]*"|'"'"'[^'"'"']*'"'"'|[^[:space:]"'"'"']+)#\1****#Ig' \
+    -e 's#(--?[A-Za-z-]*(pass|pwd|token|secret|key|auth|clave)[A-Za-z-]*[[:space:]]+)([^-[:space:]][^[:space:]]*)#\1****#Ig' \
+    -e 's#([A-Za-z0-9_-]*(PASS|PWD|TOKEN|SECRET|KEY|AUTH|CLAVE|CONTRASE)[A-Za-z0-9_-]*[[:space:]]*[=:][[:space:]]*)("[^"]*"|'"'"'[^'"'"']*'"'"'|[^[:space:]"'"'"']+)#\1****#Ig' \
     -e 's#(Bearer|Basic|Token)[[:space:]]+[^[:space:]"'"'"']+#\1 ****#Ig' \
     -e 's#(^|[[:space:]])(-p|-u|--password|--user|-P)([[:space:]]+|=)?([^-[:space:]][^[:space:]]*)#\1\2\3****#g'
 }
@@ -70,7 +71,18 @@ enmascarar_fuerte() { enmascarar | sed -E 's#([^A-Za-z0-9/_.-]|^)[A-Za-z0-9_-]{2
 titulo() { printf '\n==============================================================\n%s\n==============================================================\n' "$1"; }
 
 # git "de solo lectura": sin locks opcionales, sin pager, sin fsmonitor.
-G() { git -c safe.directory='*' -c core.fsmonitor=false --no-pager -C "$REPO_DIR" "$@"; }
+# Si somos root y el repositorio es de otro usuario, git corre COMO ese usuario:
+# así la configuración de un repositorio ajeno nunca ejecuta nada como root.
+G() {
+  local dueno; dueno="$(stat -c %u "$REPO_DIR" 2>/dev/null || echo 0)"
+  if [ "$(id -u)" = 0 ] && [ "$dueno" != 0 ] && command -v runuser >/dev/null 2>&1; then
+    runuser -u "$(stat -c %U "$REPO_DIR")" -- env HOME="$(getent passwd "$(stat -c %U "$REPO_DIR")" | cut -d: -f6)" \
+      GIT_TERMINAL_PROMPT=0 GIT_OPTIONAL_LOCKS=0 GIT_SSH_COMMAND="$GIT_SSH_COMMAND" \
+      git -c core.fsmonitor=false --no-pager -C "$REPO_DIR" "$@"
+  else
+    git -c core.fsmonitor=false --no-pager -C "$REPO_DIR" "$@"
+  fi
+}
 
 seccion_sistema() {
   titulo "1. SERVIDOR"
@@ -81,7 +93,7 @@ seccion_sistema() {
   echo "Encendido desde:  $(uptime -p 2>/dev/null || uptime)"
   echo "git:              $(git --version 2>/dev/null || echo 'NO INSTALADO')"
   echo "node:             $(node --version 2>/dev/null || echo 'no encontrado')"
-  echo "pm2:              $(pm2 --version 2>/dev/null | tail -1 || true)"
+  echo "pm2:              $(command -v pm2 >/dev/null 2>&1 && echo "instalado ($(command -v pm2))" || echo 'no encontrado')"
   echo "docker:           $(docker --version 2>/dev/null || echo 'no encontrado')"
   echo "gh (GitHub CLI):  $(gh --version 2>/dev/null | head -1 || echo 'no instalado')"
   echo
@@ -94,7 +106,7 @@ seccion_sistema() {
 
 seccion_git_global() {
   titulo "2. CONFIGURACIÓN DE GIT DEL USUARIO $USUARIO_REAL (sin secretos)"
-  HOME="$HOME_REAL" git config --global --get-regexp '^(user\.|credential\.|safe\.|init\.|pull\.|push\.|core\.hookspath|core\.excludesfile|core\.sshcommand)' 2>/dev/null | enmascarar || true
+  HOME="$HOME_REAL" git config --global --get-regexp '^(user\.|credential\.|safe\.|init\.|pull\.|push\.|core\.hookspath|core\.excludesfile|core\.sshcommand)' 2>/dev/null | enmascarar_fuerte | cut -c1-160 || true
   [ -f "$HOME_REAL/.git-credentials" ] && echo "(existe $HOME_REAL/.git-credentials: hay credenciales guardadas para GitHub — no se muestran)"
   [ -d "$HOME_REAL/.ssh" ] && echo "Claves SSH en $HOME_REAL/.ssh: $(ls "$HOME_REAL/.ssh" 2>/dev/null | grep -Ev '^(known_hosts|authorized_keys|config)' | tr '\n' ' ')"
   [ -f "$HOME_REAL/.ssh/config" ] && echo "Hosts en ~/.ssh/config: $(awk 'tolower($1)=="host"{printf "%s ", $2}' "$HOME_REAL/.ssh/config" 2>/dev/null)"
@@ -116,7 +128,7 @@ agregar_candidato() {
   local d="$1" top
   [ -d "$d" ] || return 0
   d="$(cd "$d" 2>/dev/null && pwd -P)" || return 0
-  top="$(git -c safe.directory='*' -C "$d" rev-parse --show-toplevel 2>/dev/null)" && d="$top"
+  top="$(REPO_DIR="$d" G rev-parse --show-toplevel 2>/dev/null)" && d="$top"
   PROYECTOS+=("$d")
 }
 
@@ -161,7 +173,7 @@ descubrir_proyectos() {
 comparar_con_github() {
   local remoto="$1" rama_remota sha_remoto relacion n
   local ls
-  ls="$(timeout --foreground 25 git -c safe.directory='*' -C "$REPO_DIR" ls-remote --symref "$remoto" HEAD 2>&1)" || {
+  ls="$(timeout --foreground 25 G ls-remote --symref "$remoto" HEAD 2>&1)" || {
     echo "    Comparación con GitHub: no se pudo conectar ($(echo "$ls" | tail -1 | enmascarar))"
     return
   }
@@ -184,7 +196,7 @@ comparar_con_github() {
     relacion="DIVERGIDOS: servidor y GitHub tienen commits distintos cada uno"
   fi
   echo "    Relación commits servidor ↔ GitHub: $relacion"
-  echo "    Ramas en GitHub: $(timeout --foreground 25 git -c safe.directory='*' -C "$REPO_DIR" ls-remote --heads "$remoto" 2>/dev/null | awk '{sub("refs/heads/","",$2); printf "%s ", $2}' | head -c 600)"
+  echo "    Ramas en GitHub: $(timeout --foreground 25 G ls-remote --heads "$remoto" 2>/dev/null | awk '{sub("refs/heads/","",$2); printf "%s ", $2}' | head -c 600)"
 }
 
 informe_git() {
@@ -192,15 +204,9 @@ informe_git() {
   REPO_DIR="$d"
   local err
   if ! err="$(G rev-parse --git-dir 2>&1)"; then
-    if printf '%s' "$err" | grep -qi 'dubious\|unsafe' && [ "$(id -u)" = 0 ] && command -v runuser >/dev/null 2>&1; then
-      COMO_DUENO="$(stat -c %U "$d")"
-      G() { runuser -u "$COMO_DUENO" -- git -c core.fsmonitor=false --no-pager -C "$REPO_DIR" "$@"; }
-      err="$(G rev-parse --git-dir 2>&1)" || { echo "  Git: hay carpeta .git pero git no la puede leer: $(echo "$err" | tail -2 | tr '\n' ' ')"; G() { git -c safe.directory='*' -c core.fsmonitor=false --no-pager -C "$REPO_DIR" "$@"; }; return; }
-      echo "  (git leído como el dueño '$COMO_DUENO' porque esta versión de git no confía en carpetas de otros)"
-    else
-      echo "  Git: hay carpeta .git pero git no la puede leer: $(echo "$err" | tail -2 | tr '\n' ' ')"
-      return
-    fi
+    echo "  Git: hay carpeta .git pero git no la puede leer: $(echo "$err" | tail -2 | enmascarar | tr '\n' ' ')"
+    [ "$(id -u)" != 0 ] && echo "  (probá correr el diagnóstico con sudo)"
+    return
   fi
   local gitdir owner_git
   gitdir="$(G rev-parse --absolute-git-dir 2>/dev/null)"
@@ -234,10 +240,10 @@ informe_git() {
     local url; url="$(G remote get-url "$r" 2>/dev/null)"
     local tipo="https"; case "$url" in git@*|ssh://*) tipo="ssh";; esac
     local cred=""; case "$url" in https://*@*) cred=" (¡TIENE UN TOKEN/CLAVE ESCRITO EN LA URL!)";; esac
-    echo "      $r → $(echo "$url" | enmascarar)  [$tipo]$cred"
+    echo "      $r → $(echo "$url" | enmascarar_fuerte)  [$tipo]$cred"
   done
   local helper; helper="$(G config --get credential.helper 2>/dev/null)"
-  [ -n "$helper" ] && echo "    Guardado de credenciales: $helper"
+  [ -n "$helper" ] && echo "    Guardado de credenciales: $(printf '%s' "$helper" | enmascarar_fuerte | cut -c1-80)"
 
   # Cambios sin commitear (sin escribir el índice)
   local st mod del otros nuevos
@@ -264,7 +270,6 @@ informe_git() {
   anidados="$(find "$d" -mindepth 2 -maxdepth 5 -name node_modules -prune -o -name .git -print 2>/dev/null | head -10)"
   [ -n "$anidados" ] && { echo "    OJO: hay repositorios git DENTRO del proyecto (git no guardaría su contenido):"; echo "$anidados" | sed 's/^/      /'; }
   if G remote get-url origin >/dev/null 2>&1; then comparar_con_github origin; fi
-  G() { git -c safe.directory='*' -c core.fsmonitor=false --no-pager -C "$REPO_DIR" "$@"; }
 }
 
 # Medusa usa JWT_SECRET/COOKIE_SECRET = "supersecret" si no están definidos.
@@ -326,7 +331,7 @@ seccion_procesos() {
     [ -r "/proc/$pid/cmdline" ] || continue
     encontrados=1
     printf '  %-10s pid %-7s carpeta=%s\n      %s\n' "$(ps -o user= -p "$pid" 2>/dev/null)" "$pid" \
-      "$(readlink "/proc/$pid/cwd" 2>/dev/null || echo '?')" "$(ps -o args= -p "$pid" 2>/dev/null | cut -c1-160 | enmascarar_fuerte)"
+      "$(readlink "/proc/$pid/cwd" 2>/dev/null || echo '?')" "$(ps -o args= -p "$pid" 2>/dev/null | enmascarar_fuerte | cut -c1-160)"
   done
   [ "$encontrados" = 0 ] && echo "  (ninguno visible; si no sos root, corré con sudo)"
   # pm2: solo se consulta un daemon que YA esté corriendo (nunca se arranca uno nuevo)

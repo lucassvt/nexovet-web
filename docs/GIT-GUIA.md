@@ -65,10 +65,10 @@ del proyecto.
   están en git, qué tan desactualizados están, qué procesos corren y qué dominio apunta a
   qué carpeta). **Solo lectura.** Tapa lo que parezcan contraseñas, pero hay que leerlo
   antes de compartirlo.
-- **`git-vps.sh`**: el que guarda en GitHub. **Nunca modifica ni borra archivos del
-  sistema.** Solo escribe dentro de `.git`. La única excepción es agregar archivos
-  **nuevos** que vengan de GitHub fuera de `backend/` y `backend-storefront/` (por ejemplo,
-  esta guía), sin pisar nada.
+- **`git-vps.sh`**: el que guarda en GitHub. **Nunca modifica ni borra archivos de la
+  tienda.** Escribe dentro de `.git` y, como única excepción, puede traer desde GitHub
+  **documentación** (`docs/`, `scripts/vps/`, archivos `.md`) y archivos **nuevos** fuera de
+  `backend/` y `backend-storefront/`, siempre que el servidor no los haya modificado.
 
 | Modo | Cuándo | Qué hace |
 |---|---|---|
@@ -88,7 +88,10 @@ Controles que hacen `foto` y `guardar` antes de subir:
   SQL, el script avisa para que los revisen.
 - **Buscan contraseñas, tokens y datos personales** en todo lo que GitHub todavía no tiene
   (Mercado Pago, GitHub, claves privadas, direcciones con usuario y contraseña, listas de
-  emails, etc.). Si encuentran algo grave, no suben nada y explican qué hacer.
+  emails, DNI o teléfonos, etc.). Si encuentran algo grave, no suben nada y explican qué hacer.
+- **Nunca suben el historial local tal cual.** Si alguien hizo commits a mano en el
+  servidor, no se suben uno por uno: se sube un único cambio con el estado final, revisado.
+  Así, una contraseña que se commiteó y después se borró no llega a GitHub.
 - **Frenan con archivos de más de 95 MB** (GitHub no los acepta) y si no alcanza el disco.
 - **Tienen un candado**: si los dos lo corren a la vez, el segundo espera hasta un minuto y,
   si sigue ocupado, se frena con un aviso. Hay que repetirlo después.
@@ -99,7 +102,9 @@ Controles que hacen `foto` y `guardar` antes de subir:
 ## 4. Crear la versión oficial (una sola vez)
 
 Háganlo siempre como **el mismo usuario** del servidor: el dueño de la carpeta del
-proyecto. Para saber cuál es: `stat -c %U /var/www/nexovet-shop/.git`
+proyecto. Para saber cuál es: `stat -c %U /var/www/nexovet-shop/.git`. Si dice `root`,
+trabajen como root. Si dice otro nombre (por ejemplo `deploy`), entren como ese usuario
+antes de seguir: `sudo -iu deploy`.
 
 ### Paso 1: Copiar los scripts al servidor
 
@@ -119,11 +124,14 @@ el git del proyecto (`fetch` y `show` no tocan archivos del sistema):
 ```bash
 cd /var/www/nexovet-shop
 git fetch origin claude/git-workflow-official-version-7shxms
-git show FETCH_HEAD:scripts/vps/git-vps.sh     > ~/nexovet-git/git-vps.sh.nuevo
-git show FETCH_HEAD:scripts/vps/diagnostico.sh > ~/nexovet-git/diagnostico.sh.nuevo
-mv ~/nexovet-git/git-vps.sh.nuevo ~/nexovet-git/git-vps.sh
-mv ~/nexovet-git/diagnostico.sh.nuevo ~/nexovet-git/diagnostico.sh
+git show FETCH_HEAD:scripts/vps/git-vps.sh > ~/nexovet-git/git-vps.sh.nuevo \
+  && [ -s ~/nexovet-git/git-vps.sh.nuevo ] && mv ~/nexovet-git/git-vps.sh.nuevo ~/nexovet-git/git-vps.sh
+git show FETCH_HEAD:scripts/vps/diagnostico.sh > ~/nexovet-git/diagnostico.sh.nuevo \
+  && [ -s ~/nexovet-git/diagnostico.sh.nuevo ] && mv ~/nexovet-git/diagnostico.sh.nuevo ~/nexovet-git/diagnostico.sh
+ls -l ~/nexovet-git
 ```
+
+Si algún comando da error, no sigan: los archivos anteriores quedan como estaban.
 
 ### Paso 2: Hacer privado el repositorio
 
@@ -215,10 +223,10 @@ funciona.** Si quieren respaldar lo nuevo, saquen otra foto (Paso 6).
 bash ~/nexovet-git/git-vps.sh alinear
 ```
 
-Conecta la copia del servidor con `main` sin modificar archivos. Si `main` tiene archivos
-nuevos fuera de las apps (por ejemplo, esta guía), los agrega sin pisar nada. Si `main`
-tuviera **cambios de código** que el servidor no tiene, `alinear` no hace nada y avisa: eso
-es un deploy y se hace acompañado.
+Conecta la copia del servidor con `main` sin tocar archivos de la tienda. Si `main` tiene
+documentación que el servidor no tiene (por ejemplo, esta guía), la agrega. Si `main`
+tuviera **cambios en archivos de la tienda** que el servidor no tiene, `alinear` no hace
+nada y avisa: eso es un deploy y se hace acompañado.
 
 ---
 
@@ -244,10 +252,12 @@ que dice `bash ~/nexovet-git/git-vps.sh estado`.
 
 `guardar` **nunca trae código de GitHub al servidor**:
 
-- Si GitHub solo tiene archivos nuevos fuera de las apps (documentación, scripts), el
-  servidor se pone al día solo, sin tocar nada existente.
-- Si GitHub tiene **cambios de código** que el servidor no tiene, `guardar` sube sus
-  cambios a una rama aparte (`vps/guardado-FECHA`) y da un link para Claude.
+- Si GitHub solo tiene documentación (`docs/`, `scripts/vps/`, `.md`) o archivos nuevos
+  fuera de la tienda, el servidor se pone al día solo y después guarda normalmente.
+- Si GitHub tiene **cambios en archivos de la tienda** (o en archivos que el servidor también
+  cambió), `guardar` sube los cambios del servidor a una rama aparte (`vps/guardado-FECHA`)
+  y da un link para Claude. Cuando Claude la combina sin cambios, el siguiente `guardar`
+  vuelve solo a `main`.
 
 Llevar código de GitHub al servidor es un **deploy**. Por ahora se hace **acompañado**
 (pídanselo a Claude), en un horario tranquilo. Por eso, **no aprueben pull requests con
@@ -266,20 +276,24 @@ cambios de código en `main` si no van a hacer el deploy enseguida.**
 | "git no confía en esta carpeta" | Correr el comando que muestra el mensaje (`git config --global --add safe.directory …`) y repetir. |
 | "Existe index.lock" | Alguien está usando git. Esperar un minuto y repetir. |
 | "No pude conectarme con GitHub" / credenciales | Revisar el Paso 3. Si dice *Host key verification failed*: `ssh -T git@github-nexovet`. |
-| "cambios de código que el servidor no tiene" | No se tocó nada. Pasarle la salida a Claude. |
+| "GitHub tiene cambios que el servidor todavía no tiene" | No se tocó nada; lo del servidor quedó en una rama aparte. Pasarle el link a Claude. |
+| "No pude escribir estos archivos de documentación" | Suele ser un tema de permisos. No se movió nada; pasarle la salida a Claude. |
 
-`estado`, `foto`, `alinear` y `guardar` no modifican ni borran archivos del sistema: aunque
-algo falle a la mitad o aprieten Ctrl+C, la tienda sigue igual. Antes de mover una rama, el
-script guarda la posición anterior de git en `refs/vps-respaldo/FECHA`.
+`estado`, `foto`, `alinear` y `guardar` no modifican ni borran archivos de la tienda: aunque
+algo falle a la mitad o aprieten Ctrl+C, la tienda sigue igual. `guardar` primero sube y
+recién después mueve la rama del servidor; si la subida falla, el servidor queda como
+estaba. Cuando el script tiene que mover la rama de una forma que no es "hacia adelante"
+(por ejemplo en `alinear`), guarda antes la posición anterior en `refs/vps-respaldo/FECHA`.
 
 ---
 
 ## 7. Glosario rápido
 
 - **Copia de trabajo:** los archivos de verdad, los que usa el sistema.
-- **Índice:** la lista de lo que va a entrar en el próximo commit. Para armar la foto, el
-  script usa un índice temporal propio. Después de `guardar` y `alinear`, rehace el índice
-  del servidor para que coincida con el último commit (los archivos no se tocan).
+- **Índice:** la lista de lo que va a entrar en el próximo commit. Para armar cada foto o
+  guardado, el script usa un índice temporal propio. Después de `guardar` y `alinear`,
+  rehace el índice del servidor para que coincida con el último commit (los archivos no
+  se tocan).
 - **HEAD:** el último commit sobre el que está parado el servidor.
 - **Remoto (`origin`):** el repositorio de GitHub.
 - **Pull request (PR):** un pedido para sumar una rama a `main`, que alguien revisa y aprueba.
