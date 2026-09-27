@@ -129,12 +129,12 @@ cancelar() {
 preguntar() {
   [ "$SI" = 1 ] && return 0
   [ -t 0 ] || morir "Hace falta confirmar pero no hay una terminal interactiva. Si estás seguro, usá --si."
-  local r; read -r -p "$1 " r; [ "$r" = "$2" ]
+  local r; read -r -p "$1 " r; r="${r//[[:space:]]/}"; [ "${r^^}" = "$2" ]
 }
 # Igual, pero --si NO la saltea (confirmaciones de seguridad).
 preguntar_seguridad() {
   [ -t 0 ] || return 1
-  local r; read -r -p "$1 " r; [ "$r" = "$2" ]
+  local r; read -r -p "$1 " r; r="${r//[[:space:]]/}"; [ "${r^^}" = "$2" ]
 }
 
 # Nunca pedir usuario/contraseña de GitHub por teclado (GitHub no acepta
