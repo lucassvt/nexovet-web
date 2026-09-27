@@ -821,8 +821,9 @@ analizar() { # $1 = árbol de lo que GitHub ya tiene   $2 = árbol a subir
       m=""
       while IFS= read -r cand; do
         if [ "$desc" = "dirección con usuario y contraseña" ] && \
-           printf '%s' "$cand" | grep -aqiE ':(password|pass|pwd|contrase..?a|secret|changeme|x{3,}|\*+|<[^>]*>|your[_a-z-]*|user|usuario|\$\{?[A-Z_][A-Z0-9_]*\}?)@'; then
-          continue   # ejemplos típicos o variables (${DB_PASS}), no claves reales
+           { printf '%s' "$cand" | grep -aqiE ':(password|pass|pwd|contrase..?a|secret|changeme|x{3,}|\*+|<[^>]*>|your[_a-z-]*|user|usuario)@' \
+             || printf '%s' "$cand" | grep -aqE ':\$(\{[A-Za-z_][A-Za-z0-9_]*\}|[A-Z_][A-Z0-9_]*)@'; }; then
+          continue   # ejemplos típicos o variables (${DB_PASS}, $DB_PASS), no claves reales
         fi
         m="$cand"; break
       done < <(printf '%s' "${linea#*$'\t'}" | grep -aoE $flags -- "$re" | head -20)
@@ -844,9 +845,10 @@ analizar() { # $1 = árbol de lo que GitHub ya tiene   $2 = árbol a subir
   # DNI, teléfonos y domicilios con nombre de campo (JSON, CSV, texto)
   while IFS=$'\t' read -r archivo n; do
     [ -n "$archivo" ] && agregar_hallazgo MEDIA "$archivo" "parece tener datos personales ($n)"
-  done < <(awk -F'\t' '{ l=tolower($0) }
-      l ~ /(dni|documento|telefono|tel[eé]fono|celular|whatsapp|domicilio|direcci[oó]n|direccion|cuil|cuit)["'"'"']?[[:space:]]*[:=,;]/ { c[$1]++ }
-      END { for (x in c) if (c[x]>=20) print x "\t" c[x] " líneas con DNI/teléfono/domicilio" }' "$TMPD/agregado.tsv")
+  done < <(awk -F'\t' '{ l=tolower($0)
+        n=gsub(/(dni|documento|telefono|tel.?fono|celular|whatsapp|domicilio|direcci.?n|cuil|cuit)["'"'"']?[[:space:]]*([:=,;|]|[[:space:]]+[0-9])/, "&", l)
+        c[$1]+=n }
+      END { for (x in c) if (c[x]>=20) print x "\t" c[x] " datos de DNI/teléfono/domicilio" }' "$TMPD/agregado.tsv")
 
   sort -u "$TMPD/hallazgos.tsv" -o "$TMPD/hallazgos.tsv" || morir "No pude ordenar las alertas. No se subió nada."
   BLOQUEOS="$(grep -c '^ALTA' "$TMPD/hallazgos.tsv" || true)"
@@ -981,6 +983,18 @@ subir() {
 }
 
 url_github() { [ -n "$SLUG" ] && printf 'https://github.com/%s' "$SLUG"; }
+
+# Antes de subir: ¿lo que se revisó como "ya está en GitHub" sigue estando?
+# (si alguien limpió el historial de GitHub mientras tanto, no se vuelve a subir)
+base_sigue_en_github() { # $1 = commit base (o vacío)
+  [ -n "${1:-}" ] || return 0
+  GIT_SSH_COMMAND="$(ssh_sin_preguntas)" g fetch --quiet --prune "$REMOTO" >/dev/null 2>&1 || return 0
+  local r
+  for r in $(g for-each-ref --format='%(objectname)' "refs/remotes/$REMOTO/"); do
+    g merge-base --is-ancestor "$1" "$r" 2>/dev/null && return 0
+  done
+  morir "GitHub cambió su historial mientras tanto (¿alguien lo limpió?). No se subió nada. Corré de nuevo."
+}
 
 # ---------------------------------------------------------------------------
 # Cambios que llegan de GitHub: ¿se pueden aceptar sin tocar la tienda?
@@ -1285,6 +1299,7 @@ modo_foto() {
   msg+=$'\n'"Nuevos: $N_NUEVOS · Modificados: $N_MODIF · Borrados: $N_BORRADOS"
   crear_commit "$msg" "$base_commit"
   recordar_exclusiones
+  base_sigue_en_github "$base_commit"
 
   if subir "$COMMIT:refs/heads/$rama"; then
     g update-ref -m "git-vps foto" "refs/vps-fotos/$SELLO" "$COMMIT"
@@ -1509,6 +1524,7 @@ modo_guardar() {
   guardar_objetos
   crear_commit "$MENSAJE" "$padre"
   recordar_exclusiones
+  base_sigue_en_github "$padre"
   if [ "$lado_a_lado" = 1 ]; then
     subir "$COMMIT:refs/heads/vps/guardado-$SELLO" || exit 1
     g update-ref -m "git-vps guardado" "refs/vps-guardados/$SELLO" "$COMMIT"
@@ -1529,6 +1545,7 @@ modo_guardar() {
   fi
   PASO=""
   if [ "$RECHAZADO" != 0 ]; then
+    base_sigue_en_github "$padre"
     if subir "$COMMIT:refs/heads/vps/guardado-$SELLO"; then
       g update-ref -m "git-vps guardado" "refs/vps-guardados/$SELLO" "$COMMIT"
       ok "Tus cambios quedaron en la rama aparte vps/guardado-$SELLO (el servidor no cambió)."

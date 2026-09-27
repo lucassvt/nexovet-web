@@ -346,6 +346,12 @@ seccion_procesos() {
   local h u
   for h in /root/.pm2 /home/*/.pm2; do
     [ -S "$h/rpc.sock" ] || continue
+    # solo si el daemon está vivo de verdad (un socket viejo no alcanza)
+    local pidpm2; pidpm2="$(cat "$h/pm2.pid" 2>/dev/null)"
+    if [ -z "$pidpm2" ] || ! grep -q 'PM2' "/proc/$pidpm2/cmdline" 2>/dev/null; then
+      echo "--- pm2 en $h: no está corriendo (quedaron archivos viejos); no se consulta ---"
+      continue
+    fi
     u="$(stat -c %U "$h")"
     echo "--- pm2 de $u ---"
     if [ "$(id -un)" = "$u" ]; then
