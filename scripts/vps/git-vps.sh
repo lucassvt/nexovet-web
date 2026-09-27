@@ -301,7 +301,17 @@ uploads/
 # --- Copias hechas a mano mientras se edita en vivo ---
 *.bak
 *.bak.*
+*.bak-*
+*.bak_*
+*.bak[0-9]*
 *.bk
+*.bk-*
+*.bk_*
+*.orig-*
+*.orig_*
+*.old-*
+*.old_*
+*.deprecated
 *.old
 *.orig
 *.rej
@@ -889,6 +899,18 @@ mostrar_resumen() {
     info "  Excluidos con --excluir que ya estaban en git (se deja la versión anterior):"
     head -20 "$TMPD/excl_track.txt" | sed 's/^/    · /'
   fi
+  # Detalle completo para revisar con calma (rutas y alertas enmascaradas, sin contenido)
+  DETALLE="${TMPDIR:-/tmp}/git-vps-detalle.txt"
+  ( umask 077
+    { echo "Detalle de la revisión — $(date '+%Y-%m-%d %H:%M') — $DIR"
+      echo; echo "== Cambios ($total) =="
+      awk -F'\t' '{ e=($1=="A"?"nuevo":($1=="D"?"borrado":"cambia")); printf "[%s] %s\n", e, $3 }' "$TMPD/cambios.tsv"
+      echo; echo "== Quedan afuera =="; cat "$TMPD/afuera.txt" 2>/dev/null
+      echo; echo "== Excluidos con --excluir (ya estaban en git) =="; cat "$TMPD/excl_track.txt" 2>/dev/null
+      echo; echo "== Alertas =="
+      awk -F'\t' '{ printf "[%s] %s → %s\n", ($1=="ALTA"?"GRAVE":"revisar"), $2, $3 }' "$TMPD/hallazgos.tsv" 2>/dev/null
+    } > "$DETALLE" ) 2>/dev/null && info "" && info "  Detalle completo guardado en: $DETALLE"
+  [ -n "${SUDO_USER:-}" ] && chown "$SUDO_USER" "$DETALLE" 2>/dev/null
   local peso
   peso="$(awk -F'\t' '{s+=$1} END{printf "%.1f", s/1048576}' "$TMPD/vivos_tam.tsv")"
   info ""
