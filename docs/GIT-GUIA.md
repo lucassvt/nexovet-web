@@ -129,7 +129,7 @@ el git del proyecto (`fetch` y `show` no tocan archivos del sistema):
 
 ```bash
 cd /var/www/nexovet-shop
-git fetch origin claude/git-workflow-official-version-7shxms
+git fetch https://github.com/lucassvt/nexovet-web claude/git-workflow-official-version-7shxms
 git show FETCH_HEAD:scripts/vps/git-vps.sh > ~/nexovet-git/git-vps.sh.nuevo \
   && [ -s ~/nexovet-git/git-vps.sh.nuevo ] && mv ~/nexovet-git/git-vps.sh.nuevo ~/nexovet-git/git-vps.sh
 git show FETCH_HEAD:scripts/vps/diagnostico.sh > ~/nexovet-git/diagnostico.sh.nuevo \
@@ -152,7 +152,7 @@ Para subir, el servidor necesita permiso sobre el repositorio. Lo más acotado e
 mismo usuario que va a correr los scripts:
 
 ```bash
-ssh-keygen -t ed25519 -f ~/.ssh/nexovet_deploy -N "" -C "vps nexovet-web"
+ssh-keygen -t ed25519 -f ~/.ssh/nexovet_deploy -N "" -C "vps nexovet-shop"
 cat ~/.ssh/nexovet_deploy.pub
 ```
 
