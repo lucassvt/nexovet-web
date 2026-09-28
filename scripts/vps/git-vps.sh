@@ -63,7 +63,7 @@
 
 set -uo pipefail
 
-VERSION="2.2"
+VERSION="2.3"
 DIR_POR_DEFECTO="/var/www/nexovet-shop"
 : "${HOME:=$(getent passwd "$(id -un)" 2>/dev/null | cut -d: -f6)}"
 export HOME
@@ -125,6 +125,8 @@ ok()    { printf '%s✔ %s%s\n' "$VERDE" "$*" "$NORMAL"; }
 aviso() { printf '%s⚠ %s%s\n' "$AMARILLO" "$*" "$NORMAL"; }
 error() { printf '%s✖ %s%s\n' "$ROJO" "$*" "$NORMAL" >&2; }
 morir() { error "$*"; exit 1; }
+# Cómo se escribe un comando de este script para ESTE proyecto (siempre con la carpeta)
+comando() { printf 'bash %s %s %s' "$0" "$1" "$DIR"; }
 # Mensaje al cancelar una confirmación, fiel a lo que ya pasó
 cancelar() {
   if [ "$TOCO_GIT" = 1 ]; then
@@ -200,14 +202,14 @@ al_cancelar() {
   {
     echo
     case "$PASO" in
-      rama)     error "Cancelado mientras se movía la rama de git (ningún archivo del sistema se tocó). Corré: bash $0 estado y pasale la salida a Claude." ;;
+      rama)     error "Cancelado mientras se movía la rama de git (ningún archivo del sistema se tocó). Corré: $(comando estado) y pasale la salida a Claude." ;;
       commit)   if [ -n "$COMMIT" ] && [ -n "${RAMA_SUBIENDO:-}" ] && \
                    [ "$(sonda ls-remote "$REMOTO" "refs/heads/$RAMA_SUBIENDO" 2>/dev/null | awk '{print $1}')" = "$COMMIT" ]; then
-                  error "Cancelado, pero GitHub YA recibió los cambios. Ningún archivo del sistema se tocó. Corré de nuevo 'bash $0 guardar' para terminar."
+                  error "Cancelado, pero GitHub YA recibió los cambios. Ningún archivo del sistema se tocó. Corré de nuevo '$(comando guardar)' para terminar."
                 else
-                  error "Cancelado durante la subida. Ningún archivo del sistema se tocó. Corré de nuevo: bash $0 guardar"
+                  error "Cancelado durante la subida. Ningún archivo del sistema se tocó. Corré de nuevo: $(comando guardar)"
                 fi ;;
-      escribir) error "Cancelado mientras se agregaba documentación que venía de GitHub. Ningún otro archivo se tocó. Corré: bash $0 estado" ;;
+      escribir) error "Cancelado mientras se agregaba documentación que venía de GitHub. Ningún otro archivo se tocó. Corré: $(comando estado)" ;;
       *)        if [ "$TOCO_GIT" = 1 ]; then
                   error "Cancelado. No se subió nada. (El servidor ya se había puesto al día con GitHub sin tocar archivos del sistema.)"
                 elif [ "$DOCS_ESCRITOS" = 1 ]; then
@@ -1310,13 +1312,13 @@ modo_estado() {
   local fotos; fotos="$(g for-each-ref --sort=-refname --format='    %(refname:short)  %(objectname:short)' refs/vps-fotos/ | head -5)"
   paso "Próximo paso"
   if esta_alineado; then
-    info "  El servidor está alineado con la versión oficial. Para guardar cambios: bash $0 guardar"
+    info "  El servidor está alineado con la versión oficial. Para guardar cambios: $(comando guardar)"
   elif [ -n "$fotos" ]; then
     info "  Fotos sacadas, esperando aprobación en GitHub:"
     info "$fotos"
-    info "  Cuando la foto esté aprobada en GitHub: bash $0 alinear"
+    info "  Cuando la foto esté aprobada en GitHub: $(comando alinear)"
   else
-    info "  Todavía no hay versión oficial. Primero: bash $0 foto --simular   y después:   bash $0 foto"
+    info "  Todavía no hay versión oficial. Primero: $(comando foto) --simular   y después:   $(comando foto)"
   fi
   return 0
 }
@@ -1328,7 +1330,7 @@ modo_foto() {
   preparar
   if esta_alineado; then
     ok "Este servidor ya está alineado con la versión oficial: no hace falta otra foto."
-    info "   Para guardar cambios: bash $0 guardar"
+    info "   Para guardar cambios: $(comando guardar)"
     return 0
   fi
   cargar_exclusiones
@@ -1364,7 +1366,7 @@ modo_foto() {
     ok "No hay nada nuevo: los archivos del servidor son idénticos a $RAMA_PPAL de GitHub."
     if [ "$SIMULAR" = 0 ] && [ -n "$base_commit" ]; then
       g update-ref -m "git-vps foto" "refs/vps-fotos/$SELLO" "$base_commit"
-      info "   No hace falta subir nada. Ya se puede conectar el servidor: bash $0 alinear"
+      info "   No hace falta subir nada. Ya se puede conectar el servidor: $(comando alinear)"
     fi
     return 0
   fi
@@ -1400,15 +1402,15 @@ modo_foto() {
     if [ -n "$SLUG" ]; then
       info ""
       info "  Ver la foto:        $(url_github)/tree/$rama"
-      info "  Comparar con main:  $(url_github)/compare/$RAMA_PPAL...$rama"
+      info "  Comparar con $RAMA_PPAL:  $(url_github)/compare/$RAMA_PPAL...$rama"
     fi
     info ""
     info "  Próximo paso: pasale a Claude el nombre de la rama ($rama) para que la revise"
-    info "  y se apruebe como versión oficial. Después: bash $0 alinear"
+    info "  y se apruebe como versión oficial. Después: $(comando alinear)"
     info "  Mientras tanto no hace falta 'guardar'. Para respaldar lo nuevo, saquen otra foto."
   else
     g update-ref -d "refs/vps-fotos/$SELLO" "$COMMIT" 2>/dev/null
-    info "  No se subió nada. Cuando se resuelva, corré de nuevo: bash $0 foto"
+    info "  No se subió nada. Cuando se resuelva, corré de nuevo: $(comando foto)"
     exit 1
   fi
 }
@@ -1427,7 +1429,7 @@ modo_alinear() {
   rama_actual="$(g symbolic-ref --short -q HEAD || true)"
   head_actual="$(g rev-parse -q --verify HEAD || true)"
   if esta_alineado && [ "$rama_actual" = "$RAMA_PPAL" ]; then
-    ok "El servidor ya está alineado con $RAMA_PPAL. Para guardar cambios: bash $0 guardar"
+    ok "El servidor ya está alineado con $RAMA_PPAL. Para guardar cambios: $(comando guardar)"
     return 0
   fi
 
@@ -1437,7 +1439,7 @@ modo_alinear() {
   #  3) la más nueva cuya diferencia con main no requiera un deploy
   local fotos c nombre foto="" nombre_foto="" t
   fotos="$(g for-each-ref --sort=-refname --format='%(objectname) %(refname)' refs/vps-fotos/)"
-  [ -n "$fotos" ] || morir "No hay ninguna foto subida desde este servidor. Primero: bash $0 foto"
+  [ -n "$fotos" ] || morir "No hay ninguna foto subida desde este servidor. Primero: $(comando foto)"
   while read -r c nombre; do
     [ -n "$c" ] && g merge-base --is-ancestor "$c" "$oficial" && { foto="$c"; nombre_foto="$nombre"; break; }
   done <<< "$fotos"
@@ -1520,7 +1522,7 @@ modo_alinear() {
   contar_pendientes
   if [ "$PEND_GUARDAR" -gt 0 ]; then
     info "  Hay $PEND_GUARDAR archivo(s) del servidor distintos de la versión oficial (cambios hechos después de la foto)."
-    info "  Guardalos con: bash $0 guardar"
+    info "  Guardalos con: $(comando guardar)"
   else
     ok "El servidor y GitHub están sincronizados."
   fi
@@ -1536,14 +1538,14 @@ modo_guardar() {
   preparar
   if ! esta_alineado; then
     morir "Este servidor todavía no está alineado con la versión oficial.
-   Pasos: bash $0 foto  →  se revisa y se aprueba en GitHub  →  bash $0 alinear
+   Pasos: $(comando foto)  →  se revisa y se aprueba en GitHub  →  $(comando alinear)
    (Mientras tanto, para respaldar lo nuevo, se puede sacar otra foto.)"
   fi
   reparar_indice_pendiente
   cargar_exclusiones
   consultar_github
   [ "$SIMULAR" = 1 ] || exigir_privado
-  local rama; rama="$(g symbolic-ref --short -q HEAD)" || morir "El servidor no está en ninguna rama. Pasale 'bash $0 estado' a Claude."
+  local rama; rama="$(g symbolic-ref --short -q HEAD)" || morir "El servidor no está en ninguna rama. Pasale '$(comando estado)' a Claude."
   if [ "$rama" != "$RAMA_PPAL" ]; then
     aviso "La rama local es '$rama' y la principal de GitHub es '$RAMA_PPAL'."
     preguntar "¿Guardar igual en '$rama'? Escribí SI:" SI || cancelar
@@ -1553,10 +1555,10 @@ modo_guardar() {
   head_sha="$(g rev-parse HEAD)"
   r_sha="$(g rev-parse -q --verify "$remota" || true)"
   [ -n "$r_sha" ] || r_sha="$(g rev-parse -q --verify "refs/remotes/$REMOTO/$RAMA_PPAL" || true)"
-  [ -n "$r_sha" ] || morir "No encuentro la rama '$rama' ni '$RAMA_PPAL' en GitHub. Pasale 'bash $0 estado' a Claude."
+  [ -n "$r_sha" ] || morir "No encuentro la rama '$rama' ni '$RAMA_PPAL' en GitHub. Pasale '$(comando estado)' a Claude."
   # b_sha: lo último de GitHub que el servidor ya contiene
   b_sha="$(g merge-base "$head_sha" "$r_sha" 2>/dev/null || true)"
-  [ -n "$b_sha" ] || morir "El historial del servidor no tiene nada en común con GitHub. Pasale 'bash $0 estado' a Claude."
+  [ -n "$b_sha" ] || morir "El historial del servidor no tiene nada en común con GitHub. Pasale '$(comando estado)' a Claude."
 
   padre="$r_sha"
   if [ "$b_sha" != "$r_sha" ]; then
@@ -1674,7 +1676,7 @@ modo_iniciar() {
     otro="$(g rev-parse --show-toplevel 2>/dev/null || true)"
     [ "$otro" = "$DIR" ] || morir "git no puede leer $DIR/.git. Pasale esta salida a Claude. No se hizo nada."
     [ -z "$(g remote)" ] || morir "Esta carpeta ya tiene git y está conectada con $(g config --get remote.origin.url 2>/dev/null || g remote | head -1).
-   Para seguir: bash $0 foto $DIR --simular"
+   Para seguir: $(comando foto) --simular"
     for otro in MERGE_HEAD rebase-merge rebase-apply CHERRY_PICK_HEAD REVERT_HEAD BISECT_LOG; do
       [ -e "$DIR/.git/$otro" ] && morir "Hay una operación de git a medio terminar ($otro). Pasale esta salida a Claude. No se hizo nada."
     done
@@ -1725,7 +1727,7 @@ modo_iniciar() {
     fi
   fi
   ok "Listo: $DIR ya tiene git y está conectado con $SLUG. Ningún archivo del proyecto cambió."
-  info "  Próximo paso: bash $0 foto $DIR --simular   y después   bash $0 foto $DIR"
+  info "  Próximo paso: $(comando foto) --simular   y después   $(comando foto)"
 }
 
 case "$MODO" in
