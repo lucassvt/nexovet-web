@@ -68,7 +68,7 @@
 
 set -uo pipefail
 
-VERSION="2.5"
+VERSION="2.6"
 DIR_POR_DEFECTO="/var/www/nexovet-shop"
 : "${HOME:=$(getent passwd "$(id -un)" 2>/dev/null | cut -d: -f6)}"
 export HOME
@@ -730,7 +730,7 @@ $grandes_inc   No se hizo nada."
     gi update-index -z --force-remove --stdin < "$TMPD/forzados.z" || morir "No pude aplicar las exclusiones."
   fi
   # --excluir sobre archivos que YA estaban en git: se conserva la versión anterior
-  : > "$TMPD/excl_track.z"
+  : > "$TMPD/excl_track.z"; : > "$TMPD/docs_gh.z"
   if [ -s "$TMPD/excl_extra" ] && [ -n "$ARMADO_SOBRE" ]; then
     GIT_INDEX_FILE="$TMPD/indice_base" g read-tree "$ARMADO_SOBRE"
     GIT_INDEX_FILE="$TMPD/indice_base" g ls-files -z -c -i --exclude-from="$TMPD/excl_extra" > "$TMPD/excl_track.z"
@@ -745,11 +745,11 @@ $grandes_inc   No se hizo nada."
       { [ -e "$DIR/$p" ] || [ -L "$DIR/$p" ]; } && continue
       [ -n "$head_srv" ] && g cat-file -e "$head_srv:$p" 2>/dev/null && continue
       printf '%s\0' "$p"
-    done >> "$TMPD/excl_track.z"
+    done > "$TMPD/docs_gh.z"
   fi
-  if [ -s "$TMPD/excl_track.z" ]; then
-    xargs -0 env GIT_INDEX_FILE="$TMPD/indice" git -c safe.directory="$DIR" --literal-pathspecs -C "$DIR" \
-      reset -q "$ARMADO_SOBRE" -- < "$TMPD/excl_track.z" || morir "No pude aplicar --excluir a archivos que ya estaban en git."
+  if [ -s "$TMPD/excl_track.z" ] || [ -s "$TMPD/docs_gh.z" ]; then
+    cat "$TMPD/excl_track.z" "$TMPD/docs_gh.z" | xargs -0 env GIT_INDEX_FILE="$TMPD/indice" git -c safe.directory="$DIR" --literal-pathspecs -C "$DIR" \
+      reset -q "$ARMADO_SOBRE" -- || morir "No pude aplicar --excluir a archivos que ya estaban en git."
   fi
 
   # Repositorios git dentro del proyecto: git guardaría solo un puntero
@@ -768,6 +768,7 @@ $nuevos_anidados   Git no guardaría su contenido, solo un puntero. Pasale esta 
   { gi -c core.excludesFile="$TMPD/excluir" ls-files -o -i --exclude-standard --directory 2>/dev/null
     tr '\0' '\n' < "$TMPD/forzados.z"; } | sed '/^$/d' | sort -u > "$TMPD/afuera.txt"
   tr '\0' '\n' < "$TMPD/excl_track.z" | sed '/^$/d' > "$TMPD/excl_track.txt"
+  tr '\0' '\n' < "$TMPD/docs_gh.z" | sed '/^$/d' > "$TMPD/docs_gh.txt"
 }
 
 # Pasa los datos de la cuarentena a .git (recién después de confirmar)
@@ -1002,6 +1003,11 @@ mostrar_resumen() {
     info "  Excluidos con --excluir que ya estaban en git (se deja la versión anterior):"
     head -20 "$TMPD/excl_track.txt" | sed 's/^/    · /'
   fi
+  if [ -s "$TMPD/docs_gh.txt" ]; then
+    info ""
+    info "  Documentación que ya está en GitHub y el servidor no tiene (se conserva, no se borra):"
+    head -10 "$TMPD/docs_gh.txt" | sed 's/^/    · /'
+  fi
   # Detalle completo para revisar con calma (rutas y alertas enmascaradas, sin contenido)
   DETALLE="${TMPDIR:-/tmp}/git-vps-detalle-$(printf '%s' "${DIR#/}" | tr '/' '_').txt"
   ( umask 077
@@ -1010,6 +1016,7 @@ mostrar_resumen() {
       awk -F'\t' '{ e=($1=="A"?"nuevo":($1=="D"?"borrado":"cambia")); printf "[%s] %s\n", e, $3 }' "$TMPD/cambios.tsv"
       echo; echo "== Quedan afuera =="; cat "$TMPD/afuera.txt" 2>/dev/null
       echo; echo "== Excluidos con --excluir (ya estaban en git) =="; cat "$TMPD/excl_track.txt" 2>/dev/null
+      echo; echo "== Documentación de GitHub que se conserva =="; cat "$TMPD/docs_gh.txt" 2>/dev/null
       echo; echo "== Alertas =="
       awk -F'\t' '{ printf "[%s] %s → %s\n", ($1=="ALTA"?"GRAVE":"revisar"), $2, $3 }' "$TMPD/hallazgos.tsv" 2>/dev/null
     } > "$DETALLE" ) 2>/dev/null && info "" && info "  Detalle completo guardado en: $DETALLE"

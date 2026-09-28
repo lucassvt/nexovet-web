@@ -379,12 +379,12 @@ con README).
 | `/var/www/sistema-finanzas` | `sistema-finanzas` | Espera la ronda de seguridad. |
 | `/var/www/crm-cerebro` | `crm-cerebro` | Espera la ronda de seguridad (y excluir `backend/celerybeat-schedule`). |
 | `/var/www/mi-sucursal` | `mi-sucursal` | Espera la ronda de seguridad. |
-| `/opt/mcp-nexovet` | `mcp-nexovet` (crear) | Tiene git pero no GitHub: Paso 4b. |
-| `/var/www/express/app` | `express-app` (crear) | Sin git: Paso 4b. |
-| `/var/www/express/backend` | `express-backend` (crear) | Sin git: Paso 4b. |
-| `/opt/agente-gerencia` | `agente-gerencia` (crear) | Sin git: Paso 4b. |
+| `/opt/mcp-nexovet` | `mcp-nexovet` | Foto aprobada (28/09). Falta `alinear`. |
+| `/var/www/express/app` | `express-app` | Listo (28/09). Solo `guardar`. Ojo: en el servidor está solo la versión compilada; el código fuente vive en otro lado. |
+| `/var/www/express/backend` | `express-backend` | Conectado. Espera la ronda de seguridad (contraseña en el código y una clave privada en un test). |
+| `/opt/agente-gerencia` | `agente-gerencia` | Listo (28/09). Solo `guardar`. |
 | `/opt/logistica-panel` | `logistica-panel` | Listo (28/09). Solo `guardar` (su base `logistica.db` queda afuera). |
-| `/opt/evolution-api` | `evolution-api-config` (crear) | Sin git (solo configuración y scripts): Paso 4b. |
-| `/opt/odoo` | `odoo-nexovet` (crear) | Sin git: Paso 4b. |
+| `/opt/evolution-api` | `evolution-api-config` | Listo (28/09). Solo `guardar`. |
+| `/opt/odoo` | `odoo-nexovet` | Foto aprobada (28/09). Falta `alinear`. Afuera: librerías `pylibs*`, `addons/_data/` y la configuración con contraseñas (hasta la ronda de seguridad). |
 
 `/root` no es un proyecto: no se sube.
