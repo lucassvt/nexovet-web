@@ -369,7 +369,7 @@ con README).
 | `/var/www/sistema-compras` | `sistema-compras` | Listo (28/09). Solo `guardar`. |
 | `/opt/chatbotLamascotera` | `chatbotLamascotera` (rama `master`) | Listo (28/09). Solo `guardar`. |
 | `/var/www/landigia` | `landigia` | Listo (28/09). Solo `guardar`. |
-| `/var/www/milegajo` | `milegajo` | Listo (28/09). Falta sumar la pantalla Documentos con `--incluir`. |
+| `/var/www/milegajo` | `milegajo` | Listo (28/09), con la pantalla Documentos (`--incluir` recordado). Solo `guardar`. |
 | `/var/www/club-mascotera` | `club-mascotera` | Listo (28/09). Solo `guardar`. |
 | `/opt/sistema_compras` | `sistema-compras-v2` (rama `feature/v2-modulo-compras`) | Listo (28/09). Solo `guardar`. |
 | `/var/www/centro-comando` | `centro-comando` | Espera la ronda de seguridad (contraseñas escritas en el código). |
