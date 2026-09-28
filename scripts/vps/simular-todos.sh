@@ -17,7 +17,7 @@ AQUI="$(cd "$(dirname "$0")" && pwd)"
 SCRIPT="$AQUI/git-vps.sh"
 [ -s "$SCRIPT" ] || { echo "Falta $SCRIPT: bajalo primero (ver docs/GIT-GUIA.md, Paso 1)." >&2; exit 1; }
 
-# Proyectos con git y conectados con GitHub (según el diagnóstico del 27/09/2026).
+# Proyectos del servidor (según el diagnóstico del 27/09/2026).
 # La tienda (/var/www/nexovet-shop) ya está hecha y no hace falta.
 PROYECTOS=(
   /var/www/centro-comando
@@ -37,6 +37,14 @@ PROYECTOS=(
   /var/www/mi-sucursal
   /var/www/sistema-compras
   /opt/sistema_compras
+  # Sin GitHub todavía: aparecen como "primero: iniciar" hasta que se conecten
+  /opt/mcp-nexovet
+  /var/www/express/app
+  /var/www/express/backend
+  /opt/agente-gerencia
+  /opt/logistica-panel
+  /opt/evolution-api
+  /opt/odoo
 )
 [ $# -gt 0 ] && PROYECTOS=("$@")
 
