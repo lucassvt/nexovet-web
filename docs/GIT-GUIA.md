@@ -94,7 +94,8 @@ Controles que hacen `foto` y `guardar` antes de subir:
 - **Frenan si el repositorio de GitHub es público.**
 - **Dejan afuera** los archivos nuevos que no deben ir a git: `.env`, claves y certificados,
   `node_modules`, `venv` y `__pycache__` de Python, carpetas compiladas (`.next`, `.medusa`,
-  `dist`, `build`), archivos subidos por usuarios, volcados de base de datos, comprimidos,
+  `dist`, `build`), archivos subidos por usuarios, bases de datos (`.db`, `.sqlite`) y sus
+  volcados, comprimidos,
   logs, planillas `.csv`/`.xlsx` y copias de respaldo hechas a mano (`.bak`, `.old`, etc.).
   Muestran la lista de lo que quedó afuera. Todo eso **sigue en el servidor**; solo no se sube.
 - Los archivos que **ya estaban** en git se siguen guardando. Si son planillas, datos o
@@ -382,7 +383,7 @@ con README).
 | `/var/www/express/app` | `express-app` (crear) | Sin git: Paso 4b. |
 | `/var/www/express/backend` | `express-backend` (crear) | Sin git: Paso 4b. |
 | `/opt/agente-gerencia` | `agente-gerencia` (crear) | Sin git: Paso 4b. |
-| `/opt/logistica-panel` | `logistica-panel` (ya existe: copia de abril) | Sin git: Paso 4b, usando ese repositorio. |
+| `/opt/logistica-panel` | `logistica-panel` (ya existe: copia de abril) | Conectado (28/09). Falta foto (su base `logistica.db` queda afuera). |
 | `/opt/evolution-api` | `evolution-api-config` (crear) | Sin git (solo configuración y scripts): Paso 4b. |
 | `/opt/odoo` | `odoo-nexovet` (crear) | Sin git: Paso 4b. |
 

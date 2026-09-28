@@ -68,7 +68,7 @@
 
 set -uo pipefail
 
-VERSION="2.4"
+VERSION="2.5"
 DIR_POR_DEFECTO="/var/www/nexovet-shop"
 : "${HOME:=$(getent passwd "$(id -un)" 2>/dev/null | cut -d: -f6)}"
 export HOME
@@ -326,6 +326,10 @@ uploads/
 /backend-storefront/*.sql
 *.sqlite
 *.sqlite3
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
 *.csv
 *.tsv
 *.xls
