@@ -355,7 +355,8 @@ estaba. Cuando el script tiene que mover la rama de una forma que no es "hacia a
 
 ## 8. Todos los proyectos del servidor
 
-Actualizado al 28/09/2026. Se hacen de a uno: Pasos 5 a 8 (y antes el 4b si hace
+Actualizado al 28/09/2026: **18 listos**, 7 esperan la ronda de seguridad. Las reglas para
+Claude en VS Code están en `docs/REGLAS-CLAUDE.md`. Se hacen de a uno: Pasos 5 a 8 (y antes el 4b si hace
 falta). **Nombre en GitHub** es el repositorio que ya existe o el que hay que crear (privado,
 con README).
 
@@ -379,12 +380,12 @@ con README).
 | `/var/www/sistema-finanzas` | `sistema-finanzas` | Espera la ronda de seguridad. |
 | `/var/www/crm-cerebro` | `crm-cerebro` | Espera la ronda de seguridad (y excluir `backend/celerybeat-schedule`). |
 | `/var/www/mi-sucursal` | `mi-sucursal` | Espera la ronda de seguridad. |
-| `/opt/mcp-nexovet` | `mcp-nexovet` | Foto aprobada (28/09). Falta `alinear`. |
+| `/opt/mcp-nexovet` | `mcp-nexovet` | Listo (28/09). Solo `guardar` (nada de `git commit` a mano). |
 | `/var/www/express/app` | `express-app` | Listo (28/09). Solo `guardar`. Ojo: en el servidor está solo la versión compilada; el código fuente vive en otro lado. |
 | `/var/www/express/backend` | `express-backend` | Conectado. Espera la ronda de seguridad (contraseña en el código y una clave privada en un test). |
 | `/opt/agente-gerencia` | `agente-gerencia` | Listo (28/09). Solo `guardar`. |
 | `/opt/logistica-panel` | `logistica-panel` | Listo (28/09). Solo `guardar` (su base `logistica.db` queda afuera). |
 | `/opt/evolution-api` | `evolution-api-config` | Listo (28/09). Solo `guardar`. |
-| `/opt/odoo` | `odoo-nexovet` | Foto aprobada (28/09). Falta `alinear`. Afuera: librerías `pylibs*`, `addons/_data/` y la configuración con contraseñas (hasta la ronda de seguridad). |
+| `/opt/odoo` | `odoo-nexovet` | Listo (28/09). Solo `guardar`. Afuera: librerías `pylibs*`, `addons/_data/` y la configuración con contraseñas (hasta la ronda de seguridad). |
 
 `/root` no es un proyecto: no se sube.
