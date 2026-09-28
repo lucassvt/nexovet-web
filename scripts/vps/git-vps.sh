@@ -43,6 +43,11 @@
 #   --excluir PATRON     No subir lo que coincida (sintaxis .gitignore, por
 #                        ejemplo 'clientes.csv' o 'backend/src/tmp/'). Se
 #                        puede repetir. Queda recordado para las próximas veces.
+#   --incluir RUTA       Incluir una carpeta o archivo que el .gitignore del
+#                        proyecto deja afuera por error (por ejemplo
+#                        'frontend/app/(dashboard)/documents/'). La lista de
+#                        exclusiones de este script se sigue aplicando adentro.
+#                        Queda recordado para las próximas veces.
 #   --ignorar-alertas    Seguir aunque se detecten posibles contraseñas.
 #                        Solo después de revisar que son falsas alarmas.
 #   --permitir-publico   Subir aunque el repositorio de GitHub sea público.
@@ -63,7 +68,7 @@
 
 set -uo pipefail
 
-VERSION="2.3"
+VERSION="2.4"
 DIR_POR_DEFECTO="/var/www/nexovet-shop"
 : "${HOME:=$(getent passwd "$(id -un)" 2>/dev/null | cut -d: -f6)}"
 export HOME
@@ -73,7 +78,7 @@ export HOME
 # ---------------------------------------------------------------------------
 MODO=""; DIR=""; SIMULAR=0; SI=0; IGNORAR_ALERTAS=0; PERMITIR_PUBLICO=0
 MENSAJE=""; AUTOR=""; RAMA_NUEVA=""; REMOTO="origin"; URL_NUEVA=""
-EXCLUIR_EXTRA=()
+EXCLUIR_EXTRA=(); INCLUIR_EXTRA=()
 
 ayuda() { awk 'NR>1 && !/^#/{exit} NR>1{sub(/^# ?/,""); print}' "$0"; }
 valor() {
@@ -98,6 +103,7 @@ while [ $# -gt 0 ]; do
     --remoto)  valor "$@"; REMOTO="$2"; shift 2 ;;
     --url)     valor "$@"; URL_NUEVA="$2"; shift 2 ;;
     --excluir) valor "$@"; EXCLUIR_EXTRA+=("$2"); shift 2 ;;
+    --incluir) valor "$@"; INCLUIR_EXTRA+=("$2"); shift 2 ;;
     -h|--help|ayuda) ayuda; exit 0 ;;
     --version) echo "git-vps.sh $VERSION"; exit 0 ;;
     -*) echo "Opción desconocida: $1 (ver: bash $0 --help)" >&2; exit 2 ;;
@@ -584,9 +590,43 @@ cargar_exclusiones() {
   [ -s "$rec" ] && info "(Sigo excluyendo lo que se pidió antes con --excluir: $(tr '\n' ' ' < "$rec"))"
   # Si faltara el archivo, git no avisaría y subiría todo
   [ -s "$f" ] || morir "No pude preparar la lista de exclusiones."
+  cargar_inclusiones
+}
+
+# Rutas que el .gitignore del proyecto deja afuera por error (--incluir, recordadas)
+cargar_inclusiones() {
+  local rec="$GITDIR/git-vps-incluir" i pat real
+  : > "$TMPD/incluir"
+  [ -s "$rec" ] && cat "$rec" >> "$TMPD/incluir"
+  for i in "${!INCLUIR_EXTRA[@]}"; do
+    pat="${INCLUIR_EXTRA[$i]}"
+    case "$pat" in
+      "$DIR"/*) pat="${pat#"$DIR"/}" ;;
+      ./*) pat="${pat#./}" ;;
+      /*) morir "--incluir '$pat': usá una ruta relativa al proyecto, por ejemplo 'frontend/app/documents/'." ;;
+    esac
+    pat="${pat%/}"
+    real="$(realpath -m -- "$DIR/$pat" 2>/dev/null)"
+    case "$real" in
+      "$DIR"/.git|"$DIR"/.git/*) morir "--incluir '$pat': no se puede incluir la carpeta .git." ;;
+      "$DIR"/*) ;;
+      *) morir "--incluir '$pat': esa ruta no está dentro de $DIR." ;;
+    esac
+    [ -e "$DIR/$pat" ] || morir "--incluir '$pat': no existe $DIR/$pat."
+    INCLUIR_EXTRA[$i]="$pat"
+    printf '%s\n' "$pat" >> "$TMPD/incluir"
+  done
+  sed -i '/^[[:space:]]*$/d' "$TMPD/incluir"
+  sort -u "$TMPD/incluir" -o "$TMPD/incluir"
+  [ -s "$rec" ] && info "(Sigo incluyendo lo que se pidió antes con --incluir: $(tr '\n' ' ' < "$rec"))"
+  return 0
 }
 
 recordar_exclusiones() {
+  if [ "${#INCLUIR_EXTRA[@]}" -gt 0 ]; then
+    { [ -f "$GITDIR/git-vps-incluir" ] && cat "$GITDIR/git-vps-incluir"; printf '%s\n' "${INCLUIR_EXTRA[@]}"; } \
+      | sed '/^[[:space:]]*$/d' | sort -u > "$TMPD/inc.nuevo" && cat "$TMPD/inc.nuevo" > "$GITDIR/git-vps-incluir"
+  fi
   [ "${#EXCLUIR_EXTRA[@]}" -gt 0 ] || return 0
   local rec="$GITDIR/git-vps-excluir"
   { [ -f "$rec" ] && cat "$rec"; printf '%s\n' "${EXCLUIR_EXTRA[@]}"; } | sed '/^[[:space:]]*$/d' | sort -u > "$TMPD/rec.nuevo" \
@@ -661,6 +701,22 @@ $grandes
     morir "Falló la lectura de archivos (git add). No se hizo nada."
   fi
   grep -v '^warning: LF will be replaced\|^warning: in the working copy\|^warning: CRLF will be replaced' "$TMPD/add.err" | head -20
+
+  # --incluir: lo que el .gitignore del proyecto deja afuera por error entra igual
+  # (la lista propia de abajo se sigue aplicando adentro de esas carpetas)
+  if [ -s "$TMPD/incluir" ]; then
+    local inc grandes_inc=""
+    while IFS= read -r inc; do
+      [ -e "$DIR/$inc" ] || [ -L "$DIR/$inc" ] || continue
+      grandes_inc+="$(find "$DIR/$inc" -xdev -type f -size +97280k -printf '      %p\n' 2>/dev/null)"
+      "${BAJA[@]}" env GIT_INDEX_FILE="$TMPD/indice" git -c safe.directory="$DIR" -c core.hooksPath=/dev/null \
+        -c core.fsmonitor=false -c core.bigFileThreshold=16m -c core.excludesFile="$TMPD/excluir" \
+        -c advice.addEmbeddedRepo=false --literal-pathspecs -C "$DIR" add -f -- "$inc" 2>>"$TMPD/add.err" \
+        || morir "No pude incluir '$inc' (--incluir). No se hizo nada."
+    done < "$TMPD/incluir"
+    [ -z "$grandes_inc" ] || morir "Hay archivos de más de 95 MB en lo pedido con --incluir (GitHub no los acepta):
+$grandes_inc   No se hizo nada."
+  fi
 
   # La lista propia manda aunque un .gitignore del proyecto diga lo contrario
   # (backend/.gitignore tiene '!src/**'): lo NUEVO que coincida queda afuera.
@@ -1265,7 +1321,15 @@ contar_pendientes() {
   local -x LC_ALL=C GIT_OPTIONAL_LOCKS=0
   g -c core.excludesFile="$TMPD/excluir" ls-files -z -o --exclude-standard 2>/dev/null | sort -z > "$TMPD/p_std.z"
   g ls-files -z -o --exclude-from="$TMPD/excluir" 2>/dev/null | sort -z > "$TMPD/p_x.z"
-  local nuevos; nuevos="$(comm -z -12 "$TMPD/p_std.z" "$TMPD/p_x.z" | tr -cd '\0' | wc -c)"
+  comm -z -12 "$TMPD/p_std.z" "$TMPD/p_x.z" > "$TMPD/p_new.z"
+  # Lo pedido con --incluir cuenta aunque el .gitignore del proyecto lo ignore
+  if [ -s "$TMPD/incluir" ]; then
+    local inc
+    while IFS= read -r inc; do
+      g --literal-pathspecs ls-files -z -o --exclude-from="$TMPD/excluir" -- "$inc" 2>/dev/null
+    done < "$TMPD/incluir" >> "$TMPD/p_new.z"
+  fi
+  local nuevos; nuevos="$(sort -z -u "$TMPD/p_new.z" | tr -cd '\0' | wc -c)"
   g status --porcelain=v1 -z -uno 2>/dev/null | tr '\0' '\n' | sed -E 's/^.. //' | sed '/^$/d' | sort -u > "$TMPD/p_mod.txt"
   : > "$TMPD/p_track.txt"
   if [ -s "$TMPD/excl_extra" ]; then
@@ -1308,6 +1372,7 @@ modo_estado() {
     fi
   fi
   [ -s "$GITDIR/git-vps-excluir" ] && info "  Exclusiones recordadas: $(tr '\n' ' ' < "$GITDIR/git-vps-excluir")"
+  [ -s "$GITDIR/git-vps-incluir" ] && info "  Inclusiones recordadas: $(tr '\n' ' ' < "$GITDIR/git-vps-incluir")"
   [ -e "$GITDIR/git-vps-indice-pendiente" ] && info "  (Índice de git pendiente de refrescar: se arregla solo en el próximo guardar.)"
   local fotos; fotos="$(g for-each-ref --sort=-refname --format='    %(refname:short)  %(objectname:short)' refs/vps-fotos/ | head -5)"
   paso "Próximo paso"

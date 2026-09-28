@@ -320,6 +320,7 @@ cambios de código en `main` si no van a hacer el deploy enseguida.**
 | "nginx sirve archivos directamente desde …" (`iniciar`) | No se hizo nada. Pásenle la salida a Claude: hay que resolverlo antes para no exponer el código. |
 | "ALERTAS DE SEGURIDAD … GRAVE" | Si el archivo no tiene que ir a GitHub: repetir con `--excluir 'ruta/archivo'` (queda recordado para las próximas veces). Si la contraseña está escrita dentro del código, hay que moverla al `.env` (pídanselo a Claude). Si es una falsa alarma: `--ignorar-alertas`. |
 | "Cosas para revisar" | Leer la lista. Si está todo bien, escribir `SI`. |
+| Falta código que el `.gitignore` del proyecto deja afuera por error | Repetir con `--incluir 'ruta/de/la/carpeta/'` (queda recordado). Adentro se siguen dejando afuera `.env`, claves, `node_modules`, etc. |
 | "todavía no está alineado" | Seguir el plan del Paso 5 al 8. |
 | "git no confía en esta carpeta" | Correr el comando que muestra el mensaje (`git config --global --add safe.directory …`) y repetir. |
 | "Existe index.lock" | Alguien está usando git. Esperar un minuto y repetir. |
@@ -353,35 +354,35 @@ estaba. Cuando el script tiene que mover la rama de una forma que no es "hacia a
 
 ## 8. Todos los proyectos del servidor
 
-Según el diagnóstico del 27/09/2026. Se hacen de a uno: Pasos 5 a 8 (y antes el 4b si hace
+Actualizado al 28/09/2026. Se hacen de a uno: Pasos 5 a 8 (y antes el 4b si hace
 falta). **Nombre en GitHub** es el repositorio que ya existe o el que hay que crear (privado,
 con README).
 
 | Carpeta | Nombre en GitHub | Cómo está |
 |---|---|---|
-| `/var/www/nexovet-shop` | `nexovet-shop` | Hecho (27/09). Solo `guardar`. |
-| `/var/www/centro-comando` | `centro-comando` | Tiene GitHub. Falta foto. |
-| `/opt/chatbotLamascotera` | `chatbotLamascotera` | Tiene GitHub (rama `testing`, 3 commits sin subir). Falta foto. |
-| `/var/www/landigia` | `landigia` | Tiene GitHub. Falta foto. |
-| `/var/www/landing-general` | `landing-general` | Tiene GitHub. Falta foto. |
-| `/var/www/landing-lamascotera-preview` | `landing-lamascotera-preview` | Tiene GitHub, sin cambios. Falta foto. |
-| `/var/www/logistica-system` | `logistica-system` | Tiene GitHub (32 commits sin subir). Falta foto. |
-| `/var/www/mi-franquicia` | `mi-franquicia` | Tiene GitHub. Falta foto. |
-| `/var/www/milegajo` | `milegajo` | Tiene GitHub. Falta foto. |
-| `/var/www/portal-vendedores` | `portal-vendedores` | Tiene GitHub. Falta foto. |
-| `/var/www/sistema-finanzas` | `sistema-finanzas` | Tiene GitHub. Falta foto. |
-| `/var/www/sistema-rrhh` | `sistema-rrhh` | Tiene GitHub, sin cambios. Falta foto. |
-| `/var/www/club-mascotera` | (lo dice la foto) | Tiene git; el diagnóstico no lo pudo leer. Falta foto. |
-| `/var/www/crm-cerebro` | (lo dice la foto) | Ídem. |
-| `/var/www/landing-lamascotera` | (lo dice la foto) | Ídem. |
-| `/var/www/mi-sucursal` | (lo dice la foto) | Ídem. |
-| `/var/www/sistema-compras` | (lo dice la foto) | Ídem. |
-| `/opt/sistema_compras` | (lo dice la foto) | Ídem. |
+| `/var/www/nexovet-shop` | `nexovet-shop` | Listo (27/09). Solo `guardar`. |
+| `/var/www/landing-lamascotera-preview` | `landing-lamascotera-preview` | Listo (28/09). Solo `guardar`. |
+| `/var/www/sistema-rrhh` | `sistema-rrhh` | Listo (28/09). Solo `guardar`. |
+| `/var/www/landing-lamascotera` | `landing-lamascotera` | Listo (28/09). Solo `guardar`. |
+| `/var/www/landing-general` | `landing-general` | Listo (28/09). Solo `guardar`. |
+| `/var/www/mi-franquicia` | `mi-franquicia` | Listo (28/09). Solo `guardar`. |
+| `/var/www/sistema-compras` | `sistema-compras` | Listo (28/09). Solo `guardar`. |
+| `/opt/chatbotLamascotera` | `chatbotLamascotera` (rama `master`) | Listo (28/09). Solo `guardar`. |
+| `/var/www/landigia` | `landigia` | Listo (28/09). Solo `guardar`. |
+| `/var/www/milegajo` | `milegajo` | Listo (28/09). Falta sumar la pantalla Documentos con `--incluir`. |
+| `/var/www/club-mascotera` | `club-mascotera` | Listo (28/09). Solo `guardar`. |
+| `/opt/sistema_compras` | `sistema-compras-v2` (rama `feature/v2-modulo-compras`) | Listo (28/09). Solo `guardar`. |
+| `/var/www/centro-comando` | `centro-comando` | Espera la ronda de seguridad (contraseñas escritas en el código). |
+| `/var/www/logistica-system` | `logistica-system` | Espera la ronda de seguridad. |
+| `/var/www/portal-vendedores` | `portal-vendedores` | Espera la ronda de seguridad. |
+| `/var/www/sistema-finanzas` | `sistema-finanzas` | Espera la ronda de seguridad. |
+| `/var/www/crm-cerebro` | `crm-cerebro` | Espera la ronda de seguridad (y excluir `backend/celerybeat-schedule`). |
+| `/var/www/mi-sucursal` | `mi-sucursal` | Espera la ronda de seguridad. |
 | `/opt/mcp-nexovet` | `mcp-nexovet` (crear) | Tiene git pero no GitHub: Paso 4b. |
 | `/var/www/express/app` | `express-app` (crear) | Sin git: Paso 4b. |
 | `/var/www/express/backend` | `express-backend` (crear) | Sin git: Paso 4b. |
 | `/opt/agente-gerencia` | `agente-gerencia` (crear) | Sin git: Paso 4b. |
-| `/opt/logistica-panel` | `logistica-panel` (ya existe: copia de abril) | Sin git: Paso 4b, usando ese repositorio (no hace falta crearlo). |
+| `/opt/logistica-panel` | `logistica-panel` (ya existe: copia de abril) | Sin git: Paso 4b, usando ese repositorio. |
 | `/opt/evolution-api` | `evolution-api-config` (crear) | Sin git (solo configuración y scripts): Paso 4b. |
 | `/opt/odoo` | `odoo-nexovet` (crear) | Sin git: Paso 4b. |
 
