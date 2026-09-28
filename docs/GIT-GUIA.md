@@ -383,7 +383,7 @@ con README).
 | `/var/www/express/app` | `express-app` (crear) | Sin git: Paso 4b. |
 | `/var/www/express/backend` | `express-backend` (crear) | Sin git: Paso 4b. |
 | `/opt/agente-gerencia` | `agente-gerencia` (crear) | Sin git: Paso 4b. |
-| `/opt/logistica-panel` | `logistica-panel` (ya existe: copia de abril) | Conectado (28/09). Falta foto (su base `logistica.db` queda afuera). |
+| `/opt/logistica-panel` | `logistica-panel` | Listo (28/09). Solo `guardar` (su base `logistica.db` queda afuera). |
 | `/opt/evolution-api` | `evolution-api-config` (crear) | Sin git (solo configuración y scripts): Paso 4b. |
 | `/opt/odoo` | `odoo-nexovet` (crear) | Sin git: Paso 4b. |
 
