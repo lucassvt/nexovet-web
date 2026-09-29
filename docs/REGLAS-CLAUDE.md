@@ -1,14 +1,15 @@
 # Reglas para trabajar en el servidor de Nexovet
 
-(Para Claude en VS Code y en cualquier sesión que toque el servidor. Versión 28/09/2026.)
+(Para Claude en VS Code y en cualquier sesión que toque el servidor. Versión 29/09/2026.)
 
 La **versión oficial** de cada sistema es la que corre en el servidor (`ssh nexovet`).
 GitHub guarda una copia revisada de cada uno. Las copias en las PCs **no** son oficiales.
 
 ## Nunca
 
-- **Copiar archivos de una PC al servidor** (scp, rsync, sftp, pegar archivos enteros) salvo
-  un deploy que Lucas pida explícitamente. Así se pisaban versiones nuevas con viejas.
+- **Subir al servidor copias de la PC**: carpetas o proyectos enteros (scp, rsync, sftp), o un
+  archivo que no bajaste recién del servidor. Esas copias pueden estar viejas y pisar lo que
+  funciona. Solo con un deploy que Lucas pida explícitamente.
 - **Usar git a mano en el servidor**: nada de `git add`, `git commit`, `git push`, `git pull`,
   `git merge`, `git checkout <rama>`, `git switch`, `git stash`, `git reset`, `git restore`,
   `git clean` ni `git rebase`. Para guardar se usa `guardar` (abajo), que revisa contraseñas
@@ -19,8 +20,11 @@ GitHub guarda una copia revisada de cada uno. Las copias en las PCs **no** son o
 
 ## Cómo se trabaja
 
-1. Los cambios se hacen **en el servidor**, en la carpeta del proyecto. Antes de editar un
-   archivo, leé su versión actual **en el servidor** (no la de la PC).
+1. Los cambios se hacen **en el servidor**, en la carpeta del proyecto. Para editar un archivo:
+   bajalo del servidor, editalo y volvé a subir **ese mismo archivo** enseguida (por SFTP o scp
+   está bien), de a uno. Justo antes de subirlo, fijate que en el servidor no haya cambiado
+   mientras tanto (misma fecha y tamaño, o mismo contenido). Si cambió, empezá de nuevo desde la
+   versión nueva.
 2. Hacer una copia de respaldo antes de editar está bien (`archivo.bak_motivo_fecha`): no se sube.
 3. Cuando el cambio está terminado **y funciona**, guardalo en GitHub:
 
