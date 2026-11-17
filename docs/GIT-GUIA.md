@@ -55,8 +55,8 @@ Para guardar y subir, usen siempre el script de abajo, que hace todo con los con
 - **La versión oficial es la del servidor.** GitHub se pone igual al servidor, nunca al revés.
 - **La tienda ya está hecha:** `/var/www/nexovet-shop` → `lucassvt/nexovet-shop` (privado).
   `main` en GitHub es igual a lo que corre, y el servidor quedó alineado el 27/09/2026.
-- **Faltan los otros proyectos del servidor.** La lista y en qué paso está cada uno está en
-  la sección 8. Se hacen de a uno, con los mismos pasos que la tienda.
+- **Los 25 proyectos del servidor ya están en GitHub** (17/11/2026). La lista está en la
+  sección 8, junto con lo que corre en el servidor y todavía no tiene repositorio.
 - `lucassvt/nexovet-web` es una copia vieja (abril) y **pública**: no es la que usa el servidor.
 - **Riesgo mientras tanto:** si el disco del servidor falla o alguien borra algo por error,
   lo que no esté en GitHub no tiene copia en ningún otro lado.
@@ -110,6 +110,8 @@ Controles que hacen `foto` y `guardar` antes de subir:
 - **Tienen un candado**: si los dos lo corren a la vez, el segundo espera hasta un minuto y,
   si sigue ocupado, se frena con un aviso. Hay que repetirlo después.
 - **`--simular`** hace todo el análisis sin crear ni subir nada, y no deja nada ocupando disco.
+  **Ojo: `alinear` no respeta `--simular`**: igual mueve la rama y escribe la documentación. Para
+  ver el plan de `alinear` sin cambiar nada, córranlo sin `--si` y contesten que no.
 
 ---
 
@@ -355,10 +357,14 @@ estaba. Cuando el script tiene que mover la rama de una forma que no es "hacia a
 
 ## 8. Todos los proyectos del servidor
 
-Actualizado al 28/09/2026: **18 listos**, 7 esperan la ronda de seguridad. Las reglas para
-Claude en VS Code están en `docs/REGLAS-CLAUDE.md`. Se hacen de a uno: Pasos 5 a 8 (y antes el 4b si hace
-falta). **Nombre en GitHub** es el repositorio que ya existe o el que hay que crear (privado,
-con README).
+Actualizado al 17/11/2026: **los 25 proyectos están en GitHub y alineados**. Los 7 marcados con
+`*` subieron el 16/11 tal como estaban, con contraseñas escritas en el código: la ronda de
+seguridad sigue pendiente. Hasta que se haga, esos 7 (y solo esos) se guardan con
+`--ignorar-alertas`, autorizado por Lucas de forma permanente. Cuando se haga la ronda, hay que
+sacar las marcas y esa excepción. Las reglas para Claude en VS Code están en
+`docs/REGLAS-CLAUDE.md`. **Nombre en GitHub** es el repositorio de cada proyecto.
+
+Para sumar un proyecto nuevo del servidor: Paso 4b y después Pasos 5 a 8.
 
 | Carpeta | Nombre en GitHub | Cómo está |
 |---|---|---|
@@ -374,18 +380,25 @@ con README).
 | `/var/www/milegajo` | `milegajo` | Listo (28/09), con la pantalla Documentos (`--incluir` recordado). Solo `guardar`. |
 | `/var/www/club-mascotera` | `club-mascotera` | Listo (28/09). Solo `guardar`. |
 | `/opt/sistema_compras` | `sistema-compras-v2` (rama `feature/v2-modulo-compras`) | Listo (28/09). Solo `guardar`. |
-| `/var/www/centro-comando` | `centro-comando` | Espera la ronda de seguridad (contraseñas escritas en el código). |
-| `/var/www/logistica-system` | `logistica-system` | Espera la ronda de seguridad. |
-| `/var/www/portal-vendedores` | `portal-vendedores` | Espera la ronda de seguridad. |
-| `/var/www/sistema-finanzas` | `sistema-finanzas` | Espera la ronda de seguridad. |
-| `/var/www/crm-cerebro` | `crm-cerebro` | Espera la ronda de seguridad (y excluir `backend/celerybeat-schedule`). |
-| `/var/www/mi-sucursal` | `mi-sucursal` | Espera la ronda de seguridad. |
+| `/var/www/centro-comando` * | `centro-comando` | Listo (17/11). `guardar --ignorar-alertas`. |
+| `/var/www/logistica-system` * | `logistica-system` | Listo (17/11). `guardar --ignorar-alertas`. `ecosystem.config.js` queda afuera. |
+| `/var/www/portal-vendedores` * | `portal-vendedores` (rama `master`) | Listo (17/11). `guardar --ignorar-alertas`. |
+| `/var/www/sistema-finanzas` * | `sistema-finanzas` | Listo (17/11). `guardar --ignorar-alertas`. Lo nuevo de `backups/` queda afuera. |
+| `/var/www/crm-cerebro` * | `crm-cerebro` | Listo (17/11). `guardar --ignorar-alertas`. `backend/celerybeat-schedule` queda afuera. |
+| `/var/www/mi-sucursal` * | `mi-sucursal` (rama `master`) | Listo (17/11). `guardar --ignorar-alertas`. |
 | `/opt/mcp-nexovet` | `mcp-nexovet` | Listo (28/09). Solo `guardar` (nada de `git commit` a mano). |
 | `/var/www/express/app` | `express-app` | Listo (28/09). Solo `guardar`. Ojo: en el servidor está solo la versión compilada; el código fuente vive en otro lado. |
-| `/var/www/express/backend` | `express-backend` | Conectado. Espera la ronda de seguridad (contraseña en el código y una clave privada en un test). |
+| `/var/www/express/backend` * | `express-backend` | Listo (17/11). `guardar --ignorar-alertas`. `var/uber_crudo/` queda afuera (datos, no código). |
 | `/opt/agente-gerencia` | `agente-gerencia` | Listo (28/09). Solo `guardar`. |
 | `/opt/logistica-panel` | `logistica-panel` | Listo (28/09). Solo `guardar` (su base `logistica.db` queda afuera). |
 | `/opt/evolution-api` | `evolution-api-config` | Listo (28/09). Solo `guardar`. |
 | `/opt/odoo` | `odoo-nexovet` | Listo (28/09). Solo `guardar`. Afuera: librerías `pylibs*`, `addons/_data/` y la configuración con contraseñas (hasta la ronda de seguridad). |
 
 `/root` no es un proyecto: no se sube.
+
+### Lo que corre en el servidor y todavía no tiene repositorio
+
+Relevado el 17/11/2026. Para poder desplegar en otro servidor hay que subirlos (Paso 4b):
+`/root/erp_migraciones/` (el más crítico: lo usan unas 55 líneas de cron y 2 servicios),
+app-equipo, petplus-shop, app-mensajes, desempeno-motor, peya-sync, teo-archivos, ga4-tablero,
+`/var/www/html` y los scripts de `/usr/local/bin`.
